@@ -1,0 +1,749 @@
+---
+title: "Study 2"
+subtitle: "Processing"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: hide
+    highlight: haddock
+    toc: yes
+    toc_float: yes
+---
+
+```{r include=FALSE}
+
+knitr::opts_chunk$set(message = FALSE, 
+                      warning = FALSE)
+
+```
+
+# Dependencies 
+
+```{r}
+
+# dependencies
+library(tidyverse)
+library(readxl)
+library(lubridate)
+library(janitor)
+library(effsize)
+
+# create necessary directory
+dir.create("processed")
+
+```
+
+# Item level data
+
+```{r}
+
+data_raw_1_neutral_form_a <- read_excel("raw/data_raw_1_neutral_form_a.xlsx") %>%
+  janitor::clean_names() %>%
+  mutate(task_order = "MASS & SD form A first",
+         condition = "Neutral") %>%
+  # rename variables 
+  select(task_order,
+         condition,
+         age = x1_age,                                                                                   
+         gender = x2_gender,                                                                                
+         sexual_orientation = x3_sexual_orientation,
+         ethnicity = x4_ethnicity,                                                                             
+         political_identity = x5_poltical,
+         mass_pre_1 = x6_2_have_a_friend_who_is_gay,                                                            
+         mass_pre_2 = x6_5_allow_your_children_to_idolise_look_up_to_a_celebrity_sport_player_who_is_gay,       
+         mass_pre_3 = x6_10_return_money_to_a_gay_person_if_you_saw_them_accidentally_drop_it,                  
+         mass_pre_4 = x6_14_rent_a_room_in_your_home_to_a_person_who_is_gay,                                    
+         mass_pre_5 = x6_16_work_for_a_boss_who_is_gay,                                                         
+         mass_pre_6 = x6_17_hire_a_person_who_is_gay_to_babysit_your_children,                                  
+         mass_pre_7 = x6_19_offer_to_give_directions_to_a_person_who_is_gay,  
+         mass_pre_8 = x6_23_join_in_on_a_celebration_for_the_birthday_of_a_person_who_is_gay_whom_you_work_with,
+         mass_pre_9 = x6_25_sit_next_to_a_gay_person_on_a_bus_train,                                            
+         mass_pre_10 = x6_26_attend_a_public_event_that_celebrates_people_who_are_gay,
+         mass_pre_11 = x6_27_rent_an_apartment_knowing_that_they_neighbours_are_gay,
+         mass_pre_12 = x6_28_hire_a_person_who_is_gay_to_housesit_while_you_are_out_of_town, 
+         sd_pre_1 = x6_1_get_into_a_movie_without_paying_if_you_were_sure_you_wouldnt_be_seen,                
+         sd_pre_2 = x6_3_doubt_your_ability_to_succeed_in_life,                                               
+         sd_pre_3 = x6_4_intensely_dislike_anyone,                                                            
+         sd_pre_4 = x6_6_feel_resentful_when_you_dont_get_your_way,                                           
+         sd_pre_5 = x6_7_insist_on_having_things_your_own_way,                                                
+         sd_pre_6 = x6_8_feel_irked_when_people_express_ideas_very_different_from_your_own,                   
+         sd_pre_7 = x6_9_practice_what_you_preach,                                                            
+         sd_pre_8 = x6_11_resent_being_asked_to_return_a_favour,                                              
+         sd_pre_9 = x6_12_rebel_against_people_in_authority_even_if_you_know_they_are_right,                  
+         sd_pre_10 = x6_13_be_careful_about_your_manner_of_dress,                                              
+         sd_pre_11 = x6_15_use_the_same_table_manners_at_home_that_you_use_when_you_eat_out_in_a_restaurant,   
+         sd_pre_12 = x6_18_remain_courteous_even_to_people_who_are_disagreeable,                               
+         sd_pre_13 = x6_20_hesitate_to_go_out_of_your_way_to_help_someone_in_trouble,                          
+         sd_pre_14 = x6_21_take_advantage_of_someone,                                                          
+         sd_pre_15 = x6_22_feel_irritated_by_people_who_ask_favours_of_you,                                    
+         sd_pre_16 = x6_24_give_up_on_doing_something_because_you_think_too_little_of_your_ability,            
+         mass_post_1 = x7_1_leave_a_valuable_item_alone_in_a_room_with_only_a_person_who_is_stuas_present,
+         mass_post_2 = x7_4_lend_a_small_amount_of_money_roughly_10_10_10_to_a_person_who_is_stuas,
+         mass_post_3 = x7_5_welcome_a_person_who_is_stuas_into_your_home,
+         mass_post_4 = x7_7_watch_a_film_that_predominantly_stars_stuas_actors_actresses, 
+         mass_post_5 = x7_11_listen_to_music_made_by_a_stuas_artist,
+         mass_post_6 = x7_12_vote_for_a_law_supporting_the_equal_rights_of_people_who_are_stuas,    
+         mass_post_7 = x7_15_donate_to_a_group_or_organisation_that_predominantly_benefits_people_who_are_stuas,
+         mass_post_8 = x7_17_vote_for_a_politician_who_is_stuas,         
+         mass_post_9 = x7_18_rent_a_room_from_a_landlord_who_is_stuas,    
+         mass_post_10 = x7_23_choose_a_person_who_is_stuas_as_your_cashier_at_a_store,  
+         mass_post_11 = x7_24_sell_your_home_to_a_person_who_is_stuas,            
+         mass_post_12 = x7_28_use_the_same_public_bathroom_as_a_person_who_is_stuas,                           
+         sd_post_1 = x7_2_admit_when_you_dont_know_something,
+         sd_post_2 = x7_3_be_a_good_listener_no_matter_who_you_are_talking_to,
+         sd_post_3 = x7_6_feel_like_smashing_things,
+         sd_post_4 = x7_8_admit_when_you_make_a_mistake,
+         sd_post_5 = x7_9_let_someone_else_be_punished_for_your_wrongdoings,
+         sd_post_6 = x7_10_go_on_with_your_work_if_you_are_not_encouraged,
+         sd_post_7 = x7_13_deliberately_say_something_that_would_hurt_someones_feelings,
+         sd_post_8 = x7_14_gossip,
+         sd_post_9 = x7_16_feel_the_urge_to_tell_someone_off,
+         sd_post_10 = x7_19_feel_jealous_of_the_good_fortune_of_others,
+         sd_post_11 = x7_20_feel_as_thought_someone_who_had_a_misfortune_only_got_what_they_deserved,
+         sd_post_12 = x7_21_make_a_long_trip_without_checking_the_safety_of_your_car,
+         sd_post_13 = x7_22_play_sick_to_get_out_of_something,
+         sd_post_14 = x7_25_try_to_get_even_rather_than_forgive_and_forget,
+         sd_post_15 = x7_26_thoroughly_investigate_the_qualifications_of_all_candidates_before_voting,
+         sd_post_16 = x7_27_get_along_with_loud_mouthed_obnoxious_people) %>%
+  # recode categories to numerics
+  mutate(across(starts_with("mass"), ~ as.numeric(.)),
+         across(starts_with("sd_"), ~ as.numeric(.))) %>%
+  # reverse score items
+  mutate(sd_pre_1      = ifelse(!is.na(sd_pre_1),      8 - sd_pre_1,      NA), # differs between conditions
+         sd_pre_2      = ifelse(!is.na(sd_pre_2),      8 - sd_pre_2,      NA),
+         sd_pre_3      = ifelse(!is.na(sd_pre_3),      8 - sd_pre_3,      NA),
+         sd_pre_4      = ifelse(!is.na(sd_pre_4),      8 - sd_pre_4,      NA),
+         sd_pre_5      = ifelse(!is.na(sd_pre_5),      8 - sd_pre_5,      NA),
+         sd_pre_6      = ifelse(!is.na(sd_pre_6),      8 - sd_pre_6,      NA),
+         sd_pre_8      = ifelse(!is.na(sd_pre_8),      8 - sd_pre_8,      NA),
+         sd_pre_9      = ifelse(!is.na(sd_pre_9),      8 - sd_pre_9,      NA),
+         sd_pre_13     = ifelse(!is.na(sd_pre_13),     8 - sd_pre_13,     NA),
+         sd_pre_14     = ifelse(!is.na(sd_pre_14),     8 - sd_pre_14,     NA),
+         sd_pre_15     = ifelse(!is.na(sd_pre_15),     8 - sd_pre_15,     NA),
+         sd_pre_16     = ifelse(!is.na(sd_pre_16),     8 - sd_pre_16,     NA),
+         sd_post_3     = ifelse(!is.na(sd_post_3),     8 - sd_post_3,     NA),
+         sd_post_5     = ifelse(!is.na(sd_post_5),     8 - sd_post_5,     NA),
+         sd_post_7     = ifelse(!is.na(sd_post_7),     8 - sd_post_7,     NA),
+         sd_post_8     = ifelse(!is.na(sd_post_8),     8 - sd_post_8,     NA),
+         sd_post_9     = ifelse(!is.na(sd_post_9),     8 - sd_post_9,     NA),
+         sd_post_10    = ifelse(!is.na(sd_post_10),    8 - sd_post_10,    NA),
+         sd_post_11    = ifelse(!is.na(sd_post_11),    8 - sd_post_11,    NA),
+         sd_post_12    = ifelse(!is.na(sd_post_12),    8 - sd_post_12,    NA),
+         sd_post_13    = ifelse(!is.na(sd_post_13),    8 - sd_post_13,    NA),
+         sd_post_14    = ifelse(!is.na(sd_post_14),    8 - sd_post_14,    NA),
+         sd_post_16    = ifelse(!is.na(sd_post_16),    8 - sd_post_16,    NA)) 
+
+data_raw_3_positive_form_a <- read_excel("raw/data_raw_3_positive_form_a.xlsx") %>%
+  janitor::clean_names() %>%
+  mutate(task_order = "MASS & SD form A first",
+         condition = "Positive") %>%
+  # rename variables 
+  select(task_order,
+         condition,
+         age = x1_age,                                                                                   
+         gender = x2_gender,                                                                                
+         sexual_orientation = x3_sexual_orientation,
+         ethnicity = x4_ethnicity,                                                                             
+         political_identity = x5_political_affiliation,
+         mass_pre_1 = x6_2_have_a_friend_who_is_gay,
+         mass_pre_2 = x6_5_allow_your_children_to_idolise_look_up_to_a_celebrity_sport_player_who_is_gay,
+         mass_pre_3 = x6_10_return_money_to_a_gay_person_if_you_saw_them_accidentally_drop_it,
+         mass_pre_4 = x6_14_rent_a_room_in_your_home_to_a_person_who_is_gay,
+         mass_pre_5 = x6_16_work_for_a_boss_who_is_gay,
+         mass_pre_6 = x6_17_hire_a_person_who_is_gay_to_babysit_your_children,
+         mass_pre_7 = x6_19_offer_to_give_directions_to_a_person_who_is_gay,
+         mass_pre_8 = x6_23_join_in_on_a_celebration_for_the_birthday_of_a_person_who_is_gay_whom_you_work_with,
+         mass_pre_9 = x6_25_sit_next_to_a_gay_person_on_a_bus_train,
+         mass_pre_10 = x6_26_attend_a_public_event_that_celebrates_people_who_are_gay,
+         mass_pre_11 = x6_27_rent_an_apartment_knowing_that_they_neighbours_are_gay,
+         mass_pre_12 = x6_28_hire_a_person_who_is_gay_to_housesit_while_you_are_out_of_town,
+         sd_pre_1 = x6_1_get_into_a_movie_without_paying_if_you_were_sure_you_wouldnt_be_seen,
+         sd_pre_2 = x6_3_doubt_your_ability_to_succeed_in_life,
+         sd_pre_3 = x6_4_intensely_dislike_anyone,
+         sd_pre_4 = x6_6_feel_resentful_when_you_dont_get_your_way,
+         sd_pre_5 = x6_7_insist_on_having_things_your_own_way,
+         sd_pre_6 = x6_8_feel_irked_when_people_express_ideas_very_different_from_your_own,
+         sd_pre_7 = x6_9_practice_what_you_preach,
+         sd_pre_8 = x6_11_resent_being_asked_to_return_a_favour,
+         sd_pre_9 = x6_12_rebel_against_people_in_authority_even_if_you_know_they_are_right,
+         sd_pre_10 = x6_13_be_careful_about_your_manner_of_dress,
+         sd_pre_11 = x6_15_use_the_same_table_manners_at_home_that_you_use_when_you_eat_out_in_a_restaurant,
+         sd_pre_12 = x6_18_remain_courteous_even_to_people_who_are_disagreeable,
+         sd_pre_13 = x6_20_hesitate_to_go_out_of_your_way_to_help_someone_in_trouble,
+         sd_pre_14 = x6_21_take_advantage_of_someone,
+         sd_pre_15 = x6_22_feel_irritated_by_people_who_ask_favours_of_you,
+         sd_pre_16 = x6_24_give_up_on_doing_something_because_you_think_too_little_of_your_ability,
+         mass_post_1 = x7_1_leave_a_valuable_item_alone_in_a_room_with_only_a_person_who_is_a_pindle_present,
+         mass_post_2 = x7_4_lend_a_small_amount_of_money_roughly_10_10_10_to_a_person_who_is_a_pindle,
+         mass_post_3 = x7_5_welcome_a_person_who_is_a_pindle_into_your_home,
+         mass_post_4 = x7_7_watch_a_film_that_predominantly_stars_pindle_actors_actresses,
+         mass_post_5 = x7_11_listen_to_music_made_by_a_pindle_artist,
+         mass_post_6 = x7_12_vote_for_a_law_supporting_the_equal_rights_of_people_who_are_pindle,
+         mass_post_7 = x7_15_donate_to_a_group_or_organisation_that_predominantly_benefits_people_who_are_pindle,
+         mass_post_8 = x7_17_vote_for_a_politician_who_is_a_pindle,
+         mass_post_9 = x7_18_rent_a_room_from_a_landlord_who_is_a_pindle,
+         mass_post_10 = x7_23_choose_a_person_who_is_a_pindle_as_your_cashier_at_a_store,
+         mass_post_11 = x7_24_sell_your_home_to_a_person_who_is_a_pindle,
+         mass_post_12 = x7_28_use_the_same_public_bathroom_as_a_person_who_is_a_pindle,
+         sd_post_1 = x7_2_admit_when_you_dont_know_something,
+         sd_post_2 = x7_3_be_a_good_listener_no_matter_who_you_are_talking_to,
+         sd_post_3 = x7_6_feel_like_smashing_things,
+         sd_post_4 = x7_8_admit_when_you_make_a_mistake,
+         sd_post_5 = x7_9_let_someone_else_be_punished_for_your_wrongdoings,
+         sd_post_6 = x7_10_go_on_with_your_work_if_you_are_not_encouraged,
+         sd_post_7 = x7_13_deliberately_say_something_that_would_hurt_someones_feelings,
+         sd_post_8 = x7_14_gossip,
+         sd_post_9 = x7_16_feel_the_urge_to_tell_someone_off,
+         sd_post_10 = x7_19_feel_jealous_of_the_good_fortune_of_others,
+         sd_post_11 = x7_20_feel_as_thought_someone_who_had_a_misfortune_only_got_what_they_deserved,
+         sd_post_12 = x7_21_make_a_long_trip_without_checking_the_safety_of_your_car,
+         sd_post_13 = x7_22_play_sick_to_get_out_of_something,
+         sd_post_14 = x7_25_try_to_get_even_rather_than_forgive_and_forget,
+         sd_post_15 = x7_26_thoroughly_investigate_the_qualifications_of_all_candidates_before_voting,
+         sd_post_16 = x7_27_get_along_with_loud_mouthed_obnoxious_people) %>%
+  # recode categories to numerics
+  mutate(across(starts_with("mass"), ~ as.numeric(.)),
+         across(starts_with("sd_"), ~ as.numeric(.))) %>%
+  # reverse score items
+  mutate(sd_pre_1      = ifelse(!is.na(sd_pre_1),      8 - sd_pre_1,      NA), # differs between conditions
+         sd_pre_2      = ifelse(!is.na(sd_pre_2),      8 - sd_pre_2,      NA),
+         sd_pre_3      = ifelse(!is.na(sd_pre_3),      8 - sd_pre_3,      NA),
+         sd_pre_4      = ifelse(!is.na(sd_pre_4),      8 - sd_pre_4,      NA),
+         sd_pre_5      = ifelse(!is.na(sd_pre_5),      8 - sd_pre_5,      NA),
+         sd_pre_6      = ifelse(!is.na(sd_pre_6),      8 - sd_pre_6,      NA),
+         sd_pre_8      = ifelse(!is.na(sd_pre_8),      8 - sd_pre_8,      NA),
+         sd_pre_9      = ifelse(!is.na(sd_pre_9),      8 - sd_pre_9,      NA),
+         sd_pre_13     = ifelse(!is.na(sd_pre_13),     8 - sd_pre_13,     NA),
+         sd_pre_14     = ifelse(!is.na(sd_pre_14),     8 - sd_pre_14,     NA),
+         sd_pre_15     = ifelse(!is.na(sd_pre_15),     8 - sd_pre_15,     NA),
+         sd_pre_16     = ifelse(!is.na(sd_pre_16),     8 - sd_pre_16,     NA),
+         sd_post_3     = ifelse(!is.na(sd_post_3),     8 - sd_post_3,     NA),
+         sd_post_5     = ifelse(!is.na(sd_post_5),     8 - sd_post_5,     NA),
+         sd_post_7     = ifelse(!is.na(sd_post_7),     8 - sd_post_7,     NA),
+         sd_post_8     = ifelse(!is.na(sd_post_8),     8 - sd_post_8,     NA),
+         sd_post_9     = ifelse(!is.na(sd_post_9),     8 - sd_post_9,     NA),
+         sd_post_10    = ifelse(!is.na(sd_post_10),    8 - sd_post_10,    NA),
+         sd_post_11    = ifelse(!is.na(sd_post_11),    8 - sd_post_11,    NA),
+         sd_post_12    = ifelse(!is.na(sd_post_12),    8 - sd_post_12,    NA),
+         sd_post_13    = ifelse(!is.na(sd_post_13),    8 - sd_post_13,    NA),
+         sd_post_14    = ifelse(!is.na(sd_post_14),    8 - sd_post_14,    NA),
+         sd_post_16    = ifelse(!is.na(sd_post_16),    8 - sd_post_16,    NA)) 
+
+data_raw_5_negative_form_a <- read_excel("raw/data_raw_5_negative_form_a.xlsx") %>%
+  janitor::clean_names() %>%
+  mutate(task_order = "MASS & SD form A first",
+         condition = "Negative") %>%
+  # rename variables 
+  select(task_order,
+         condition,
+         age = x1_age,                                                                                   
+         gender = x2_gender,                                                                                
+         sexual_orientation = x3_sexual_orientation,
+         ethnicity = x4_ethnicity,                                                                             
+         political_identity = x5_political_affiliation,
+         mass_pre_1 = x6_2_have_a_friend_who_is_gay,
+         mass_pre_2 = x6_5_allow_your_children_to_idolise_look_up_to_a_celebrity_sport_player_who_is_gay,
+         mass_pre_3 = x6_10_return_money_to_a_gay_person_if_you_saw_them_accidentally_drop_it,
+         mass_pre_4 = x6_14_rent_a_room_in_your_home_to_a_person_who_is_gay,
+         mass_pre_5 = x6_16_work_for_a_boss_who_is_gay,
+         mass_pre_6 = x6_17_hire_a_person_who_is_gay_to_babysit_your_children,
+         mass_pre_7 = x6_19_offer_to_give_directions_to_a_person_who_is_gay,
+         mass_pre_8 = x6_23_join_in_on_a_celebration_for_the_birthday_of_a_person_who_is_gay_whom_you_work_with,
+         mass_pre_9 = x6_25_sit_next_to_a_gay_person_on_a_bus_train,
+         mass_pre_10 = x6_26_attend_a_public_event_that_celebrates_people_who_are_gay,
+         mass_pre_11 = x6_27_rent_an_apartment_knowing_that_they_neighbours_are_gay,
+         mass_pre_12 = x6_28_hire_a_person_who_is_gay_to_housesit_while_you_are_out_of_town,
+         sd_pre_1 = x6_1_get_into_a_movie_without_paying_if_you_were_sure_you_wouldnt_be_seen,
+         sd_pre_2 = x6_3_doubt_your_ability_to_succeed_in_life,
+         sd_pre_3 = x6_4_intensely_dislike_anyone,
+         sd_pre_4 = x6_6_feel_resentful_when_you_dont_get_your_way,
+         sd_pre_5 = x6_7_insist_on_having_things_your_own_way,
+         sd_pre_6 = x6_8_feel_irked_when_people_express_ideas_very_different_from_your_own,
+         sd_pre_7 = x6_9_practice_what_you_preach,
+         sd_pre_8 = x6_11_resent_being_asked_to_return_a_favour,
+         sd_pre_9 = x6_12_rebel_against_people_in_authority_even_if_you_know_they_are_right,
+         sd_pre_10 = x6_13_be_careful_about_your_manner_of_dress,
+         sd_pre_11 = x6_15_use_the_same_table_manners_at_home_that_you_use_when_you_eat_out_in_a_restaurant,
+         sd_pre_12 = x6_18_remain_courteous_even_to_people_who_are_disagreeable,
+         sd_pre_13 = x6_20_hesitate_to_go_out_of_your_way_to_help_someone_in_trouble,
+         sd_pre_14 = x6_21_take_advantage_of_someone,
+         sd_pre_15 = x6_22_feel_irritated_by_people_who_ask_favours_of_you,
+         sd_pre_16 = x6_24_give_up_on_doing_something_because_you_think_too_little_of_your_ability,
+         mass_post_1 = x7_1_leave_a_valuable_item_alone_in_a_room_with_only_a_person_who_is_a_glanker_present,
+         mass_post_2 = x7_4_lend_a_small_amount_of_money_roughly_10_10_10_to_a_person_who_is_a_glanker,
+         mass_post_3 = x7_5_welcome_a_person_who_is_a_glanker_into_your_home,
+         mass_post_4 = x7_7_watch_a_film_that_predominantly_stars_glanker_actors_actresses,
+         mass_post_5 = x7_11_listen_to_music_made_by_a_glanker_artist,
+         mass_post_6 = x7_12_vote_for_a_law_supporting_the_equal_rights_of_glanker_people,
+         mass_post_7 = x7_15_donate_to_a_group_or_organisation_that_predominantly_benefits_glanker_people,
+         mass_post_8 = x7_17_vote_for_a_politician_who_is_a_glanker,
+         mass_post_9 = x7_18_rent_a_room_from_a_landlord_who_is_a_glanker,
+         mass_post_10 = x7_23_choose_a_person_who_is_a_glanker_as_your_cashier_at_a_store,
+         mass_post_11 = x7_24_sell_your_home_to_a_person_who_is_a_glanker,
+         mass_post_12 = x7_28_use_the_same_public_bathroom_as_a_person_who_is_a_glanker,
+         sd_post_1 = x7_2_admit_when_you_dont_know_something,
+         sd_post_2 = x7_3_be_a_good_listener_no_matter_who_you_are_talking_to,
+         sd_post_3 = x7_6_feel_like_smashing_things,
+         sd_post_4 = x7_8_admit_when_you_make_a_mistake,
+         sd_post_5 = x7_9_let_someone_else_be_punished_for_your_wrongdoings,
+         sd_post_6 = x7_10_go_on_with_your_work_if_you_are_not_encouraged,
+         sd_post_7 = x7_13_deliberately_say_something_that_would_hurt_someones_feelings,
+         sd_post_8 = x7_14_gossip,
+         sd_post_9 = x7_16_feel_the_urge_to_tell_someone_off,
+         sd_post_10 = x7_19_feel_jealous_of_the_good_fortune_of_others,
+         sd_post_11 = x7_20_feel_as_thought_someone_who_had_a_misfortune_only_got_what_they_deserved,
+         sd_post_12 = x7_21_make_a_long_trip_without_checking_the_safety_of_your_car,
+         sd_post_13 = x7_22_play_sick_to_get_out_of_something,
+         sd_post_14 = x7_25_try_to_get_even_rather_than_forgive_and_forget,
+         sd_post_15 = x7_26_thoroughly_investigate_the_qualifications_of_all_candidates_before_voting,
+         sd_post_16 = x7_27_get_along_with_loud_mouthed_obnoxious_people) %>%
+  # recode categories to numerics
+  mutate(across(starts_with("mass"), ~ as.numeric(.)),
+         across(starts_with("sd_"), ~ as.numeric(.))) %>%
+  # reverse score items
+  mutate(sd_pre_1      = ifelse(!is.na(sd_pre_1),      8 - sd_pre_1,      NA), # differs between conditions
+         sd_pre_2      = ifelse(!is.na(sd_pre_2),      8 - sd_pre_2,      NA),
+         sd_pre_3      = ifelse(!is.na(sd_pre_3),      8 - sd_pre_3,      NA),
+         sd_pre_4      = ifelse(!is.na(sd_pre_4),      8 - sd_pre_4,      NA),
+         sd_pre_5      = ifelse(!is.na(sd_pre_5),      8 - sd_pre_5,      NA),
+         sd_pre_6      = ifelse(!is.na(sd_pre_6),      8 - sd_pre_6,      NA),
+         sd_pre_8      = ifelse(!is.na(sd_pre_8),      8 - sd_pre_8,      NA),
+         sd_pre_9      = ifelse(!is.na(sd_pre_9),      8 - sd_pre_9,      NA),
+         sd_pre_13     = ifelse(!is.na(sd_pre_13),     8 - sd_pre_13,     NA),
+         sd_pre_14     = ifelse(!is.na(sd_pre_14),     8 - sd_pre_14,     NA),
+         sd_pre_15     = ifelse(!is.na(sd_pre_15),     8 - sd_pre_15,     NA),
+         sd_pre_16     = ifelse(!is.na(sd_pre_16),     8 - sd_pre_16,     NA),
+         sd_post_3     = ifelse(!is.na(sd_post_3),     8 - sd_post_3,     NA),
+         sd_post_5     = ifelse(!is.na(sd_post_5),     8 - sd_post_5,     NA),
+         sd_post_7     = ifelse(!is.na(sd_post_7),     8 - sd_post_7,     NA),
+         sd_post_8     = ifelse(!is.na(sd_post_8),     8 - sd_post_8,     NA),
+         sd_post_9     = ifelse(!is.na(sd_post_9),     8 - sd_post_9,     NA),
+         sd_post_10    = ifelse(!is.na(sd_post_10),    8 - sd_post_10,    NA),
+         sd_post_11    = ifelse(!is.na(sd_post_11),    8 - sd_post_11,    NA),
+         sd_post_12    = ifelse(!is.na(sd_post_12),    8 - sd_post_12,    NA),
+         sd_post_13    = ifelse(!is.na(sd_post_13),    8 - sd_post_13,    NA),
+         sd_post_14    = ifelse(!is.na(sd_post_14),    8 - sd_post_14,    NA),
+         sd_post_16    = ifelse(!is.na(sd_post_16),    8 - sd_post_16,    NA)) 
+
+data_raw_2_neutral_form_b <- read_excel("raw/data_raw_2_neutral_form_b.xlsx") %>%
+  janitor::clean_names() %>%
+  mutate(task_order = "MASS & SD form B first",
+         condition = "Neutral") %>%
+  # rename variables 
+  select(task_order,
+         condition,
+         age = x1_age,                                                                                   
+         gender = x2_gender,                                                                                
+         sexual_orientation = x3_sexual_orientation,
+         ethnicity = x4_ethnicity,                                                                             
+         political_identity = x5_political_affiliation,
+         mass_pre_1 = x6_1_leave_a_valuable_item_alone_in_a_room_with_only_a_person_who_is_gay_present,
+         mass_pre_2 = x6_4_lend_a_small_amount_of_money_roughly_10_10_10_to_a_person_who_is_gay,
+         mass_pre_3 = x6_5_welcome_a_person_who_is_gay_into_your_home,
+         mass_pre_4 = x6_7_watch_a_film_that_predominantly_stars_gay_actors_actresses,
+         mass_pre_5 = x6_11_listen_to_music_made_by_a_gay_artist,
+         mass_pre_6 = x6_12_vote_for_a_law_supporting_the_equal_rights_of_people_who_are_gay,
+         mass_pre_7 = x6_15_donate_to_a_group_or_organisation_that_predominantly_benefits_people_who_are_gay,
+         mass_pre_8 = x6_17_vote_for_a_politician_who_is_gay,
+         mass_pre_9 = x6_18_rent_a_room_from_a_landlord_who_is_gay,
+         mass_pre_10 = x6_23_choose_a_person_who_is_gay_as_your_cashier_at_a_store,
+         mass_pre_11 = x6_24_sell_your_home_to_a_person_who_is_gay,
+         mass_pre_12 = x6_28_use_the_same_public_bathroom_as_a_person_who_is_gay,
+         sd_pre_1 = x6_2_admit_when_you_dont_know_something,
+         sd_pre_2 = x6_3_be_a_good_listener_no_matter_who_you_are_talking_to,
+         sd_pre_3 = x6_6_feel_like_smashing_things,
+         sd_pre_4 = x6_8_admit_when_you_make_a_mistake,
+         sd_pre_5 = x6_9_let_someone_else_be_punished_for_your_wrongdoings,
+         sd_pre_6 = x6_10_go_on_with_your_work_if_you_are_not_encouraged,
+         sd_pre_7 = x6_13_deliberately_say_something_that_would_hurt_someones_feelings,
+         sd_pre_8 = x6_14_gossip,
+         sd_pre_9 = x6_16_feel_the_urge_to_tell_someone_off,
+         sd_pre_10 = x6_19_feel_jealous_of_the_good_fortune_of_others,
+         sd_pre_11 = x6_20_feel_as_thought_someone_who_had_a_misfortune_only_got_what_they_deserved,
+         sd_pre_12 = x6_21_make_a_long_trip_without_checking_the_safety_of_your_car,
+         sd_pre_13 = x6_22_play_sick_to_get_out_of_something,
+         sd_pre_14 = x6_25_try_to_get_even_rather_than_forgive_and_forget,
+         sd_pre_15 = x6_26_thoroughly_investigate_the_qualifications_of_all_candidates_before_voting,
+         sd_pre_16 = x6_27_get_along_with_loud_mouthed_obnoxious_people,
+         mass_post_1 = x7_2_have_a_friend_who_is_a_stuas,
+         mass_post_2 = x7_5_allow_your_children_to_idolise_look_up_to_a_celebrity_sport_player_who_is_a_stuas,
+         mass_post_3 = x7_10_return_money_to_a_stuas_person_if_you_saw_them_accidentally_drop_it,
+         mass_post_4 = x7_14_rent_a_room_in_your_home_to_a_person_who_is_a_stuas,
+         mass_post_5 = x7_16_work_for_a_boss_who_is_a_stuas,
+         mass_post_6 = x7_17_hire_a_person_who_is_a_stuas_to_babysit_your_children,
+         mass_post_7 = x7_19_offer_to_give_directions_to_a_person_who_is_a_stuas,
+         mass_post_8 = x7_23_join_in_on_a_celebration_for_the_birthday_of_a_person_who_is_a_stuas_whom_you_work_with,
+         mass_post_9 = x7_25_sit_next_to_a_stuas_person_on_a_bus_train,
+         mass_post_10 = x7_26_attend_a_public_event_that_celebrates_people_who_are_stuas,
+         mass_post_11 = x7_27_rent_an_apartment_knowing_that_they_neighbours_are_stuas,
+         mass_post_12 = x7_28_hire_a_person_who_is_a_stuas_to_housesit_while_you_are_out_of_town,
+         sd_post_1 = x7_1_get_into_a_movie_without_paying_if_you_were_sure_you_wouldnt_be_seen,
+         sd_post_2 = x7_3_doubt_your_ability_to_succeed_in_life,
+         sd_post_3 = x7_4_intensely_dislike_anyone,
+         sd_post_4 = x7_6_feel_resentful_when_you_dont_get_your_way,
+         sd_post_5 = x7_7_insist_on_having_things_your_own_way,
+         sd_post_6 = x7_8_feel_irked_when_people_express_ideas_very_different_from_your_own,
+         sd_post_7 = x7_9_practice_what_you_preach,
+         sd_post_8 = x7_11_resent_being_asked_to_return_a_favour,
+         sd_post_9 = x7_12_rebel_against_people_in_authority_even_if_you_know_they_are_right,
+         sd_post_10 = x7_13_be_careful_about_your_manner_of_dress,
+         sd_post_11 = x7_15_use_the_same_table_manners_at_home_that_you_use_when_you_eat_out_in_a_restaurant,
+         sd_post_12 = x7_18_remain_courteous_even_to_people_who_are_disagreeable,
+         sd_post_13 = x7_20_hesitate_to_go_out_of_your_way_to_help_someone_in_trouble,
+         sd_post_14 = x7_21_take_advantage_of_someone,
+         sd_post_15 = x7_22_feel_irritated_by_people_who_ask_favours_of_you,
+         sd_post_16 = x7_24_give_up_on_doing_something_because_you_think_too_little_of_your_ability) %>%
+  # recode categories to numerics
+  mutate(across(starts_with("mass"), ~ as.numeric(.)),
+         across(starts_with("sd_"), ~ as.numeric(.))) %>%
+  mutate(sd_post_1     = ifelse(!is.na(sd_post_1),     8 - sd_post_1,     NA), # differs between conditions
+         sd_post_2     = ifelse(!is.na(sd_post_2),     8 - sd_post_2,     NA),
+         sd_post_3     = ifelse(!is.na(sd_post_3),     8 - sd_post_3,     NA),
+         sd_post_4     = ifelse(!is.na(sd_post_4),     8 - sd_post_4,     NA),
+         sd_post_5     = ifelse(!is.na(sd_post_5),     8 - sd_post_5,     NA),
+         sd_post_6     = ifelse(!is.na(sd_post_6),     8 - sd_post_6,     NA),
+         sd_post_8     = ifelse(!is.na(sd_post_8),     8 - sd_post_8,     NA),
+         sd_post_9     = ifelse(!is.na(sd_post_9),     8 - sd_post_9,     NA),
+         sd_post_13    = ifelse(!is.na(sd_post_13),    8 - sd_post_13,    NA),
+         sd_post_14    = ifelse(!is.na(sd_post_14),    8 - sd_post_14,    NA),
+         sd_post_15    = ifelse(!is.na(sd_post_15),    8 - sd_post_15,    NA),
+         sd_post_16    = ifelse(!is.na(sd_post_16),    8 - sd_post_16,    NA),
+         sd_pre_3      = ifelse(!is.na(sd_pre_3),      8 - sd_pre_3,      NA),
+         sd_pre_5      = ifelse(!is.na(sd_pre_5),      8 - sd_pre_5,      NA),
+         sd_pre_7      = ifelse(!is.na(sd_pre_7),      8 - sd_pre_7,      NA),
+         sd_pre_8      = ifelse(!is.na(sd_pre_8),      8 - sd_pre_8,      NA),
+         sd_pre_9      = ifelse(!is.na(sd_pre_9),      8 - sd_pre_9,      NA),
+         sd_pre_10     = ifelse(!is.na(sd_pre_10),     8 - sd_pre_10,     NA),
+         sd_pre_11     = ifelse(!is.na(sd_pre_11),     8 - sd_pre_11,     NA),
+         sd_pre_12     = ifelse(!is.na(sd_pre_12),     8 - sd_pre_12,     NA),
+         sd_pre_13     = ifelse(!is.na(sd_pre_13),     8 - sd_pre_13,     NA),
+         sd_pre_14     = ifelse(!is.na(sd_pre_14),     8 - sd_pre_14,     NA),
+         sd_pre_16     = ifelse(!is.na(sd_pre_16),     8 - sd_pre_16,     NA))
+
+data_raw_4_positive_form_b <- read_excel("raw/data_raw_4_positive_form_b.xlsx") %>%
+  janitor::clean_names() %>%
+  mutate(task_order = "MASS & SD form B first",
+         condition = "Positive") %>%
+  # rename variables 
+  select(task_order,
+         condition,
+         age = x1_age,                                                                                   
+         gender = x2_gender,                                                                                
+         sexual_orientation = x3_sexual_orientation,
+         ethnicity = x4_ethnicity,                                                                             
+         political_identity = x5_political_affiliation,
+         mass_pre_1 = x6_1_leave_a_valuable_item_alone_in_a_room_with_only_a_person_who_is_gay_present,
+         mass_pre_2 = x6_4_lend_a_small_amount_of_money_roughly_10_10_10_to_a_person_who_is_gay,
+         mass_pre_3 = x6_5_welcome_a_person_who_is_gay_into_your_home,
+         mass_pre_4 = x6_7_watch_a_film_that_predominantly_stars_gay_actors_actresses,
+         mass_pre_5 = x6_11_listen_to_music_made_by_a_gay_artist,
+         mass_pre_6 = x6_12_vote_for_a_law_supporting_the_equal_rights_of_people_who_are_gay,
+         mass_pre_7 = x6_15_donate_to_a_group_or_organisation_that_predominantly_benefits_people_who_are_gay,
+         mass_pre_8 = x6_17_vote_for_a_politician_who_is_gay,
+         mass_pre_9 = x6_18_rent_a_room_from_a_landlord_who_is_gay,
+         mass_pre_10 = x6_23_choose_a_person_who_is_gay_as_your_cashier_at_a_store,
+         mass_pre_11 = x6_24_sell_your_home_to_a_person_who_is_gay,
+         mass_pre_12 = x6_28_use_the_same_public_bathroom_as_a_person_who_is_gay,
+         sd_pre_1 = x6_2_admit_when_you_dont_know_something,
+         sd_pre_2 = x6_3_be_a_good_listener_no_matter_who_you_are_talking_to,
+         sd_pre_3 = x6_6_feel_like_smashing_things,
+         sd_pre_4 = x6_8_admit_when_you_make_a_mistake,
+         sd_pre_5 = x6_9_let_someone_else_be_punished_for_your_wrongdoings,
+         sd_pre_6 = x6_10_go_on_with_your_work_if_you_are_not_encouraged,
+         sd_pre_7 = x6_13_deliberately_say_something_that_would_hurt_someones_feelings,
+         sd_pre_8 = x6_14_gossip,
+         sd_pre_9 = x6_16_feel_the_urge_to_tell_someone_off,
+         sd_pre_10 = x6_19_feel_jealous_of_the_good_fortune_of_others,
+         sd_pre_11 = x6_20_feel_as_thought_someone_who_had_a_misfortune_only_got_what_they_deserved,
+         sd_pre_12 = x6_21_make_a_long_trip_without_checking_the_safety_of_your_car,
+         sd_pre_13 = x6_22_play_sick_to_get_out_of_something,
+         sd_pre_14 = x6_25_try_to_get_even_rather_than_forgive_and_forget,
+         sd_pre_15 = x6_26_thoroughly_investigate_the_qualifications_of_all_candidates_before_voting,
+         sd_pre_16 = x6_27_get_along_with_loud_mouthed_obnoxious_people,
+         mass_post_1 = x7_2_have_a_friend_who_is_a_pindle,
+         mass_post_2 = x7_5_allow_your_children_to_idolise_look_up_to_a_celebrity_sport_player_who_is_a_pindle,
+         mass_post_3 = x7_10_return_money_to_a_pindle_if_you_saw_them_accidentally_drop_it,
+         mass_post_4 = x7_14_rent_a_room_in_your_home_to_a_person_who_is_a_pindle,
+         mass_post_5 = x7_16_work_for_a_boss_who_is_a_pindle,
+         mass_post_6 = x7_17_hire_a_person_who_is_a_pindle_to_babysit_your_children,
+         mass_post_7 = x7_19_offer_to_give_directions_to_a_person_who_is_a_pindle,
+         mass_post_8 = x7_23_join_in_on_a_celebration_for_the_birthday_of_a_person_who_is_a_pindle_whom_you_work_with,
+         mass_post_9 = x7_25_sit_next_to_a_pindle_on_a_bus_train,
+         mass_post_10 = x7_26_attend_a_public_event_that_celebrates_people_who_are_pindles,
+         mass_post_11 = x7_27_rent_an_apartment_knowing_that_they_neighbours_are_pindles,
+         mass_post_12 = x7_28_hire_a_person_who_is_a_pindle_to_housesit_while_you_are_out_of_town,
+         sd_post_1 = x7_1_get_into_a_movie_without_paying_if_you_were_sure_you_wouldnt_be_seen,
+         sd_post_2 = x7_3_doubt_your_ability_to_succeed_in_life,
+         sd_post_3 = x7_4_intensely_dislike_anyone,
+         sd_post_4 = x7_6_feel_resentful_when_you_dont_get_your_way,
+         sd_post_5 = x7_7_insist_on_having_things_your_own_way,
+         sd_post_6 = x7_8_feel_irked_when_people_express_ideas_very_different_from_your_own,
+         sd_post_7 = x7_9_practice_what_you_preach,
+         sd_post_8 = x7_11_resent_being_asked_to_return_a_favour,
+         sd_post_9 = x7_12_rebel_against_people_in_authority_even_if_you_know_they_are_right,
+         sd_post_10 = x7_13_be_careful_about_your_manner_of_dress,
+         sd_post_11 = x7_15_use_the_same_table_manners_at_home_that_you_use_when_you_eat_out_in_a_restaurant,
+         sd_post_12 = x7_18_remain_courteous_even_to_people_who_are_disagreeable,
+         sd_post_13 = x7_20_hesitate_to_go_out_of_your_way_to_help_someone_in_trouble,
+         sd_post_14 = x7_21_take_advantage_of_someone,
+         sd_post_15 = x7_22_feel_irritated_by_people_who_ask_favours_of_you,
+         sd_post_16 = x7_24_give_up_on_doing_something_because_you_think_too_little_of_your_ability) %>%
+  # recode categories to numerics
+  mutate(across(starts_with("mass"), ~ as.numeric(.)),
+         across(starts_with("sd_"), ~ as.numeric(.)))  %>%
+  mutate(sd_post_1     = ifelse(!is.na(sd_post_1),     8 - sd_post_1,     NA), # differs between conditions
+         sd_post_2     = ifelse(!is.na(sd_post_2),     8 - sd_post_2,     NA),
+         sd_post_3     = ifelse(!is.na(sd_post_3),     8 - sd_post_3,     NA),
+         sd_post_4     = ifelse(!is.na(sd_post_4),     8 - sd_post_4,     NA),
+         sd_post_5     = ifelse(!is.na(sd_post_5),     8 - sd_post_5,     NA),
+         sd_post_6     = ifelse(!is.na(sd_post_6),     8 - sd_post_6,     NA),
+         sd_post_8     = ifelse(!is.na(sd_post_8),     8 - sd_post_8,     NA),
+         sd_post_9     = ifelse(!is.na(sd_post_9),     8 - sd_post_9,     NA),
+         sd_post_13    = ifelse(!is.na(sd_post_13),    8 - sd_post_13,    NA),
+         sd_post_14    = ifelse(!is.na(sd_post_14),    8 - sd_post_14,    NA),
+         sd_post_15    = ifelse(!is.na(sd_post_15),    8 - sd_post_15,    NA),
+         sd_post_16    = ifelse(!is.na(sd_post_16),    8 - sd_post_16,    NA),
+         sd_pre_3      = ifelse(!is.na(sd_pre_3),      8 - sd_pre_3,      NA),
+         sd_pre_5      = ifelse(!is.na(sd_pre_5),      8 - sd_pre_5,      NA),
+         sd_pre_7      = ifelse(!is.na(sd_pre_7),      8 - sd_pre_7,      NA),
+         sd_pre_8      = ifelse(!is.na(sd_pre_8),      8 - sd_pre_8,      NA),
+         sd_pre_9      = ifelse(!is.na(sd_pre_9),      8 - sd_pre_9,      NA),
+         sd_pre_10     = ifelse(!is.na(sd_pre_10),     8 - sd_pre_10,     NA),
+         sd_pre_11     = ifelse(!is.na(sd_pre_11),     8 - sd_pre_11,     NA),
+         sd_pre_12     = ifelse(!is.na(sd_pre_12),     8 - sd_pre_12,     NA),
+         sd_pre_13     = ifelse(!is.na(sd_pre_13),     8 - sd_pre_13,     NA),
+         sd_pre_14     = ifelse(!is.na(sd_pre_14),     8 - sd_pre_14,     NA),
+         sd_pre_16     = ifelse(!is.na(sd_pre_16),     8 - sd_pre_16,     NA))
+
+data_raw_6_negative_form_b <- read_excel("raw/data_raw_6_negative_form_b.xlsx") %>%
+  janitor::clean_names() %>%
+  mutate(task_order = "MASS & SD form B first",
+         condition = "Negative") %>%
+  # rename variables 
+  select(task_order,
+         condition,
+         age = x1_age,                                                                                   
+         gender = x2_gender,                                                                                
+         sexual_orientation = x3_sexual_orientation,
+         ethnicity = x4_ethnicity,                                                                             
+         political_identity = x5_political_affiliation,
+         mass_pre_1 = x6_1_leave_a_valuable_item_alone_in_a_room_with_only_a_person_who_is_gay_present,
+         mass_pre_2 = x6_4_lend_a_small_amount_of_money_roughly_10_10_10_to_a_person_who_is_gay,
+         mass_pre_3 = x6_5_welcome_a_person_who_is_gay_into_your_home,
+         mass_pre_4 = x6_7_watch_a_film_that_predominantly_stars_gay_actors_actresses,
+         mass_pre_5 = x6_11_listen_to_music_made_by_a_gay_artist,
+         mass_pre_6 = x6_12_vote_for_a_law_supporting_the_equal_rights_of_people_who_are_gay,
+         mass_pre_7 = x6_15_donate_to_a_group_or_organisation_that_predominantly_benefits_people_who_are_gay,
+         mass_pre_8 = x6_17_vote_for_a_politician_who_is_gay,
+         mass_pre_9 = x6_18_rent_a_room_from_a_landlord_who_is_gay,
+         mass_pre_10 = x6_23_choose_a_person_who_is_gay_as_your_cashier_at_a_store,
+         mass_pre_11 = x6_24_sell_your_home_to_a_person_who_is_gay,
+         mass_pre_12 = x6_28_use_the_same_public_bathroom_as_a_person_who_is_gay,
+         sd_pre_1 = x6_2_admit_when_you_dont_know_something,
+         sd_pre_2 = x6_3_be_a_good_listener_no_matter_who_you_are_talking_to,
+         sd_pre_3 = x6_6_feel_like_smashing_things,
+         sd_pre_4 = x6_8_admit_when_you_make_a_mistake,
+         sd_pre_5 = x6_9_let_someone_else_be_punished_for_your_wrongdoings,
+         sd_pre_6 = x6_10_go_on_with_your_work_if_you_are_not_encouraged,
+         sd_pre_7 = x6_13_deliberately_say_something_that_would_hurt_someones_feelings,
+         sd_pre_8 = x6_14_gossip,
+         sd_pre_9 = x6_16_feel_the_urge_to_tell_someone_off,
+         sd_pre_10 = x6_19_feel_jealous_of_the_good_fortune_of_others,
+         sd_pre_11 = x6_20_feel_as_thought_someone_who_had_a_misfortune_only_got_what_they_deserved,
+         sd_pre_12 = x6_21_make_a_long_trip_without_checking_the_safety_of_your_car,
+         sd_pre_13 = x6_22_play_sick_to_get_out_of_something,
+         sd_pre_14 = x6_25_try_to_get_even_rather_than_forgive_and_forget,
+         sd_pre_15 = x6_26_thoroughly_investigate_the_qualifications_of_all_candidates_before_voting,
+         sd_pre_16 = x6_27_get_along_with_loud_mouthed_obnoxious_people,
+         mass_post_1 = x7_2_have_a_friend_who_is_a_glanker,
+         mass_post_2 = x7_5_allow_your_children_to_idolise_look_up_to_a_celebrity_sport_player_who_is_a_glanker,
+         mass_post_3 = x7_10_return_money_to_a_glanker_if_you_saw_them_accidentally_drop_it,
+         mass_post_4 = x7_14_rent_a_room_in_your_home_to_a_person_who_is_a_glanker,
+         mass_post_5 = x7_16_work_for_a_boss_who_is_a_glanker,
+         mass_post_6 = x7_17_hire_a_person_who_is_a_glanker_to_babysit_your_children,
+         mass_post_7 = x7_19_offer_to_give_directions_to_a_person_who_is_a_glanker,
+         mass_post_8 = x7_23_join_in_on_a_celebration_for_the_birthday_of_a_person_who_is_a_glanker_whom_you_work_with,
+         mass_post_9 = x7_25_sit_next_to_a_stuas_person_on_a_bus_train,
+         mass_post_10 = x7_26_attend_a_public_event_that_celebrates_glankers,
+         mass_post_11 = x7_27_rent_an_apartment_knowing_that_they_neighbours_are_glankers,
+         mass_post_12 = x7_28_hire_a_person_who_is_a_glanker_to_housesit_while_you_are_out_of_town,
+         sd_post_1 = x7_1_get_into_a_movie_without_paying_if_you_were_sure_you_wouldnt_be_seen,
+         sd_post_2 = x7_3_doubt_your_ability_to_succeed_in_life,
+         sd_post_3 = x7_4_intensely_dislike_anyone,
+         sd_post_4 = x7_6_feel_resentful_when_you_dont_get_your_way,
+         sd_post_5 = x7_7_insist_on_having_things_your_own_way,
+         sd_post_6 = x7_8_feel_irked_when_people_express_ideas_very_different_from_your_own,
+         sd_post_7 = x7_9_practice_what_you_preach,
+         sd_post_8 = x7_11_resent_being_asked_to_return_a_favour,
+         sd_post_9 = x7_12_rebel_against_people_in_authority_even_if_you_know_they_are_right,
+         sd_post_10 = x7_13_be_careful_about_your_manner_of_dress,
+         sd_post_11 = x7_15_use_the_same_table_manners_at_home_that_you_use_when_you_eat_out_in_a_restaurant,
+         sd_post_12 = x7_18_remain_courteous_even_to_people_who_are_disagreeable,
+         sd_post_13 = x7_20_hesitate_to_go_out_of_your_way_to_help_someone_in_trouble,
+         sd_post_14 = x7_21_take_advantage_of_someone,
+         sd_post_15 = x7_22_feel_irritated_by_people_who_ask_favours_of_you,
+         sd_post_16 = x7_24_give_up_on_doing_something_because_you_think_too_little_of_your_ability) %>%
+  # recode categories to numerics
+  mutate(across(starts_with("mass"), ~ as.numeric(.)),
+         across(starts_with("sd_"), ~ as.numeric(.)))  %>%
+  mutate(sd_post_1     = ifelse(!is.na(sd_post_1),     8 - sd_post_1,     NA), # differs between conditions
+         sd_post_2     = ifelse(!is.na(sd_post_2),     8 - sd_post_2,     NA),
+         sd_post_3     = ifelse(!is.na(sd_post_3),     8 - sd_post_3,     NA),
+         sd_post_4     = ifelse(!is.na(sd_post_4),     8 - sd_post_4,     NA),
+         sd_post_5     = ifelse(!is.na(sd_post_5),     8 - sd_post_5,     NA),
+         sd_post_6     = ifelse(!is.na(sd_post_6),     8 - sd_post_6,     NA),
+         sd_post_8     = ifelse(!is.na(sd_post_8),     8 - sd_post_8,     NA),
+         sd_post_9     = ifelse(!is.na(sd_post_9),     8 - sd_post_9,     NA),
+         sd_post_13    = ifelse(!is.na(sd_post_13),    8 - sd_post_13,    NA),
+         sd_post_14    = ifelse(!is.na(sd_post_14),    8 - sd_post_14,    NA),
+         sd_post_15    = ifelse(!is.na(sd_post_15),    8 - sd_post_15,    NA),
+         sd_post_16    = ifelse(!is.na(sd_post_16),    8 - sd_post_16,    NA),
+         sd_pre_3      = ifelse(!is.na(sd_pre_3),      8 - sd_pre_3,      NA),
+         sd_pre_5      = ifelse(!is.na(sd_pre_5),      8 - sd_pre_5,      NA),
+         sd_pre_7      = ifelse(!is.na(sd_pre_7),      8 - sd_pre_7,      NA),
+         sd_pre_8      = ifelse(!is.na(sd_pre_8),      8 - sd_pre_8,      NA),
+         sd_pre_9      = ifelse(!is.na(sd_pre_9),      8 - sd_pre_9,      NA),
+         sd_pre_10     = ifelse(!is.na(sd_pre_10),     8 - sd_pre_10,     NA),
+         sd_pre_11     = ifelse(!is.na(sd_pre_11),     8 - sd_pre_11,     NA),
+         sd_pre_12     = ifelse(!is.na(sd_pre_12),     8 - sd_pre_12,     NA),
+         sd_pre_13     = ifelse(!is.na(sd_pre_13),     8 - sd_pre_13,     NA),
+         sd_pre_14     = ifelse(!is.na(sd_pre_14),     8 - sd_pre_14,     NA),
+         sd_pre_16     = ifelse(!is.na(sd_pre_16),     8 - sd_pre_16,     NA))
+
+```
+
+
+```{r}
+
+data_item_level_prepost <- 
+  bind_rows(data_raw_1_neutral_form_a,
+            data_raw_2_neutral_form_b,
+            data_raw_3_positive_form_a,
+            data_raw_4_positive_form_b,
+            data_raw_5_negative_form_a,
+            data_raw_6_negative_form_b) %>%
+  mutate(id = row_number()) 
+
+```
+
+# Scale level data
+
+```{r}
+
+data_proportion_missing <- data_item_level_prepost %>%
+  # select only variables related to scales and items
+  select(id,
+         starts_with("mass_"),
+         starts_with("sd_")) %>%
+  # reshape data to longer format
+  pivot_longer(cols =
+                 starts_with("mass_") |
+                 starts_with("sd_"),
+               names_to = "item",
+               values_to = "response") %>%
+  # recode responses as either present or missing
+  mutate(response = ifelse(is.na(response), 0, 1)) %>%
+  # calculate missingness for each id and define exclusion variable based on cutoff
+  group_by(id) %>%
+  summarize(proportion_missing = 1 - mean(response),
+            exclude_participant_based_on_missingness = ifelse(proportion_missing > .10, TRUE, FALSE),
+            .groups = "drop") 
+
+data_proportion_missing_by_scale_pre <- data_item_level_prepost %>%
+  # select only variables related to scales and items
+  select(id,
+         starts_with("mass_pre")) %>%
+  # reshape data to longer format
+  pivot_longer(cols = starts_with("mass_"),
+               names_to = "item",
+               values_to = "response") %>%
+  # recode responses as either present or missing
+  mutate(response = ifelse(is.na(response), 0, 1)) %>%
+  # calculate missingness for each id and define exclusion variable based on cutoff
+  group_by(id) %>%
+  summarize(proportion_missing_mass_pre = 1 - mean(response),
+            .groups = "drop") 
+
+data_scale_scores_prepost <- data_item_level_prepost %>%
+  # select only variables related to scales 
+  select(id, 
+         starts_with("mass_"),
+         starts_with("sd_")) %>%
+  # reshape to longer format
+  pivot_longer(cols = 
+                 starts_with("mass_") |
+                 starts_with("sd_"),
+               names_to = "item",
+               values_to = "response") %>%
+  # create a scale variable by stripping out the item number
+  mutate(scale = str_remove_all(item, "[:digit:]"),
+         scale = str_sub(scale, end = -2),
+         scale = paste(scale, "sum_score", sep = "_")) %>%
+  # calculate a mean score for each id
+  group_by(id, scale) %>%
+  summarize(scale_mean = mean(response, na.rm = TRUE), .groups = "drop") %>%
+  # replace NaN with NA
+  mutate(scale_mean = ifelse(is.nan(scale_mean), NA, scale_mean)) %>%
+  # convert means to sum scores
+  mutate(scale_sum = case_when(str_detect(scale, "iri")  ~ scale_mean * 28,
+                               str_detect(scale, "mass") ~ scale_mean * 12,
+                               str_detect(scale, "mhs")  ~ scale_mean * 12,
+                               str_detect(scale, "sd")   ~ scale_mean * 16,
+                               str_detect(scale, "toe")  ~ scale_mean * 6)) %>%
+  select(-scale_mean) %>%
+  pivot_wider(names_from = "scale",
+              values_from = "scale_sum")
+
+```
+
+# Combine
+
+```{r}
+
+data_processed <- data_item_level_prepost %>%
+  full_join(data_proportion_missing,                   by = "id") %>%
+  full_join(data_proportion_missing_by_scale_pre,      by = "id") %>%
+  full_join(data_scale_scores_prepost,                 by = "id") %>%
+  # create difference scores
+  mutate(mass_diff_pre_post = ifelse(!is.na(mass_post_sum_score) & !is.na(mass_pre_sum_score),
+                                     mass_post_sum_score - mass_pre_sum_score, NA)) %>% 
+  # create global exclusion variable
+  mutate(exclude_participant_non_heterosexual = ifelse(sexual_orientation != "Heterosexual", TRUE, FALSE),
+         exclude = ifelse(exclude_participant_based_on_missingness == FALSE &
+                            exclude_participant_non_heterosexual == FALSE & 
+                            !is.na(condition), FALSE, TRUE)) %>%
+  # select and reorder variables
+  select(id,
+         # demographics
+         age,
+         gender, 
+         sexual_orientation, 
+         ethnicity,
+         political_identity,
+         # methods variables 
+         task_order,
+         condition,
+         exclude,
+         # scale level scores and difference scores
+         mass_pre_sum_score, 
+         mass_post_sum_score, 
+         mass_diff_pre_post,
+         # others
+         proportion_missing,
+         proportion_missing_mass_pre,
+         exclude_participant_based_on_missingness,
+         exclude_participant_non_heterosexual,
+         sd_pre_sum_score,
+         sd_post_sum_score, 
+         starts_with("mass_"),
+         starts_with("sd_"))
+
+# write to disk
+write_csv(data_processed, "processed/data_processed.csv")
+
+```
+
+
+
+
+

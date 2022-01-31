@@ -1,0 +1,1061 @@
+---
+title: "Study 4"
+subtitle: "Processing"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: hide
+    highlight: haddock
+    toc: yes
+    toc_float: yes
+---
+
+# To do 
+
+SD items are only reverse scored for pre and post, not followup, so sum scores at that timepoints is meaningless. correct.
+
+# Notes
+
+Both MHS and MASS have been scored for this study so that higher scores are desirable, i.e., represent lower homophobia. This is so that (a) there is a congruent interpretation of citonality in the analyses, and (b) so that positive Cohen's d scores in the meta analyses represent improvement, which is typical. 
+
+```{r include=FALSE}
+
+knitr::opts_chunk$set(message = FALSE, 
+                      warning = FALSE)
+
+```
+
+# Dependencies 
+
+```{r}
+
+library(tidyverse)
+library(readxl)
+library(lubridate)
+library(janitor)
+library(effsize)
+
+```
+
+# Item level data
+
+## Pre and post
+
+```{r}
+
+data_item_level_prepost_a <- read_excel("raw/data_experiment_4_raw_prepost_a.xlsx") %>%
+  # automatically clean variable names
+  janitor::clean_names() %>%
+  mutate(task_order = "MASS & SD form A first") %>%
+  # rename variables 
+  rename(id                         = q62,
+         age                        = q3,
+         gender                     = q4,
+         gender_text                = q4_3_text,
+         sexual_orientation         = q5,
+         sexual_orientation_text    = q5_5_text,
+         ethnicity                  = q6,
+         ethnicity_text             = q6_8_text,
+         political_identity         = q7,
+         attentioncheck1_condition1 = q42,
+         attentioncheck2_condition1 = q43,
+         attentioncheck1_condition2 = q44,
+         attentioncheck2_condition2 = q45,
+         attentioncheck1_condition3 = q25,
+         attentioncheck2_condition3 = q26,
+         attentioncheck1_condition4 = q47,
+         attentioncheck2_condition4 = q48,
+         attentioncheck1_condition5 = q49,
+         attentioncheck2_condition5 = q50,
+         attentioncheck1_condition6 = q51,
+         attentioncheck2_condition6 = q52,
+         attentioncheck3_condition3 = q27,
+         attentioncheck3_condition6 = q53,
+         # rename to extract the socially desirable responding questions
+         sd_pre_1   = massa_1, # these differ between conditions
+         sd_pre_2   = massa_3,
+         sd_pre_3   = massa_4,
+         sd_pre_4   = massa_6,
+         sd_pre_5   = massa_7,
+         sd_pre_6   = massa_8,
+         sd_pre_7   = massa_9,
+         sd_pre_8   = massa_11,
+         sd_pre_9   = massa_12,
+         sd_pre_10  = massa_13,
+         sd_pre_11  = massa_15,
+         sd_pre_12  = massa_18,
+         sd_pre_13  = massa_20,
+         sd_pre_14  = massa_21,
+         sd_pre_15  = massa_22,
+         sd_pre_16  = massa_24,
+         sd_post_1  = massb_2, 
+         sd_post_2  = massb_3,
+         sd_post_3  = massb_6,
+         sd_post_4  = massb_8,
+         sd_post_5  = massb_9,
+         sd_post_6  = massb_10,
+         sd_post_7  = massb_13,
+         sd_post_8  = massb_14,
+         sd_post_9  = massb_16,
+         sd_post_10 = massb_19,
+         sd_post_11 = massb_20,
+         sd_post_12 = massb_21,
+         sd_post_13 = massb_22,
+         sd_post_14 = massb_25,
+         sd_post_15 = massb_26,
+         sd_post_16 = massb_27,
+         
+         mass_pre_1   = massa_2, # these differ between conditions
+         mass_pre_2   = massa_5,
+         mass_pre_3   = massa_10,
+         mass_pre_4   = massa_14,
+         mass_pre_5   = massa_16,
+         mass_pre_6   = massa_17,
+         mass_pre_7   = massa_19,
+         mass_pre_8   = massa_23,
+         mass_pre_9   = massa_25,
+         mass_pre_10  = massa_26,
+         mass_pre_11  = massa_27,
+         mass_pre_12  = massa_28,
+         mass_post_1  = massb_1,
+         mass_post_2  = massb_4,
+         mass_post_3  = massb_5,
+         mass_post_4  = massb_7,
+         mass_post_5  = massb_11,
+         mass_post_6  = massb_12,
+         mass_post_7  = massb_15,
+         mass_post_8  = massb_17,
+         mass_post_9  = massb_18,
+         mass_post_10 = massb_23,
+         mass_post_11 = massb_24,
+         mass_post_12 = massb_28,
+         
+         agree_with_marriage_equality = q56_1,
+         business_right_to_refuse_sexuality = q57_1,
+         willingness_to_sign_petition = q58,
+         
+         long_format_response_1  = q16, 
+         long_format_response_2  = q18, 
+         long_format_response_3  = q20, 
+         long_format_response_4  = q22, 
+         long_format_response_5  = q24, 
+         long_format_response_6  = q33, 
+         long_format_response_7  = q35, 
+         long_format_response_8  = q37, 
+         long_format_response_9  = q39, 
+         long_format_response_10 = q41) %>%
+  # if id variable is missing, use a dummy based on row number
+  mutate(id = ifelse(!is.na(id), id, paste("condition_a", row_number(), sep = "_"))) %>% # differs between conditions
+  # rename all variables that match a criterion
+  rename_with(~ str_replace(., "q16_",   "iri_"),        .cols = starts_with("q16_")) %>%
+  rename_with(~ str_replace(., "q17_",   "toe_"),        .cols = starts_with("q17_")) %>%
+  rename_with(~ str_replace(., "mhs_g_", "mhs_g_pre_"),  .cols = starts_with("mhs_g_")) %>%
+  rename_with(~ str_replace(., "mhs_l_", "mhs_l_pre_"),  .cols = starts_with("mhs_l_")) %>%
+  rename_with(~ str_replace(., "q54_",   "mhs_g_post_"), .cols = starts_with("q54_")) %>%
+  rename_with(~ str_replace(., "q55_",   "mhs_l_post_"), .cols = starts_with("q55_"))  %>%
+  # recode categories to numerics
+  mutate(across(starts_with("iri_"),
+                ~ case_when(. == "A" ~ 1,
+                            . == "B" ~ 2, 
+                            . == "C" ~ 3,
+                            . == "D" ~ 4,
+                            . == "E" ~ 5)),
+         across(starts_with("mhs_") |
+                  contains("agree_with_marriage_equality") |
+                  contains("business_right_to_refuse_sexuality"),
+                ~ case_when(. == "Strongly agree" ~ 7,
+                            . == "Agree" ~ 6, 
+                            . == "Somewhat agree" ~ 5,
+                            . == "Neither agree nor disagree" ~ 4,
+                            . == "Somewhat disagree" ~ 3,
+                            . == "Disagree" ~ 2,
+                            . == "Somewhat disagree" ~ 1)),
+         across(starts_with("toe_"),
+                ~ as.numeric(.)),
+         across(starts_with("sd_"),
+                ~ as.numeric(.))) %>%
+  # reverse score items
+  mutate(mhs_g_pre_1   = ifelse(!is.na(mhs_g_pre_1),   8 - mhs_g_pre_1,   NA),
+         mhs_g_pre_2   = ifelse(!is.na(mhs_g_pre_2),   8 - mhs_g_pre_2,   NA),
+         mhs_g_pre_4   = ifelse(!is.na(mhs_g_pre_4),   8 - mhs_g_pre_4,   NA),
+         mhs_g_pre_5   = ifelse(!is.na(mhs_g_pre_5),   8 - mhs_g_pre_5,   NA),
+         mhs_g_pre_7   = ifelse(!is.na(mhs_g_pre_7),   8 - mhs_g_pre_7,   NA),
+         mhs_g_pre_8   = ifelse(!is.na(mhs_g_pre_8),   8 - mhs_g_pre_8,   NA),
+         mhs_g_pre_10  = ifelse(!is.na(mhs_g_pre_10),  8 - mhs_g_pre_10,  NA),
+         mhs_g_pre_11  = ifelse(!is.na(mhs_g_pre_11),  8 - mhs_g_pre_11,  NA),
+         mhs_g_pre_12  = ifelse(!is.na(mhs_g_pre_12),  8 - mhs_g_pre_12,  NA),
+         mhs_g_post_1  = ifelse(!is.na(mhs_g_post_1),  8 - mhs_g_post_1,  NA),
+         mhs_g_post_2  = ifelse(!is.na(mhs_g_post_2),  8 - mhs_g_post_2,  NA),
+         mhs_g_post_4  = ifelse(!is.na(mhs_g_post_4),  8 - mhs_g_post_4,  NA),
+         mhs_g_post_5  = ifelse(!is.na(mhs_g_post_5),  8 - mhs_g_post_5,  NA),
+         mhs_g_post_7  = ifelse(!is.na(mhs_g_post_7),  8 - mhs_g_post_7,  NA),
+         mhs_g_post_8  = ifelse(!is.na(mhs_g_post_8),  8 - mhs_g_post_8,  NA),
+         mhs_g_post_10 = ifelse(!is.na(mhs_g_post_10), 8 - mhs_g_post_10, NA),
+         mhs_g_post_11 = ifelse(!is.na(mhs_g_post_11), 8 - mhs_g_post_11, NA),
+         mhs_g_post_12 = ifelse(!is.na(mhs_g_post_12), 8 - mhs_g_post_12, NA),
+         mhs_l_pre_1   = ifelse(!is.na(mhs_l_pre_1),   8 - mhs_l_pre_1,   NA),
+         mhs_l_pre_2   = ifelse(!is.na(mhs_l_pre_2),   8 - mhs_l_pre_2,   NA),
+         mhs_l_pre_4   = ifelse(!is.na(mhs_l_pre_4),   8 - mhs_l_pre_4,   NA),
+         mhs_l_pre_5   = ifelse(!is.na(mhs_l_pre_5),   8 - mhs_l_pre_5,   NA),
+         mhs_l_pre_7   = ifelse(!is.na(mhs_l_pre_7),   8 - mhs_l_pre_7,   NA),
+         mhs_l_pre_8   = ifelse(!is.na(mhs_l_pre_8),   8 - mhs_l_pre_8,   NA),
+         mhs_l_pre_10  = ifelse(!is.na(mhs_l_pre_10),  8 - mhs_l_pre_10,  NA),
+         mhs_l_pre_11  = ifelse(!is.na(mhs_l_pre_11),  8 - mhs_l_pre_11,  NA),
+         mhs_l_pre_12  = ifelse(!is.na(mhs_l_pre_12),  8 - mhs_l_pre_12,  NA),
+         mhs_l_post_1  = ifelse(!is.na(mhs_l_post_1),  8 - mhs_l_post_1,  NA),
+         mhs_l_post_2  = ifelse(!is.na(mhs_l_post_2),  8 - mhs_l_post_2,  NA),
+         mhs_l_post_4  = ifelse(!is.na(mhs_l_post_4),  8 - mhs_l_post_4,  NA),
+         mhs_l_post_5  = ifelse(!is.na(mhs_l_post_5),  8 - mhs_l_post_5,  NA),
+         mhs_l_post_7  = ifelse(!is.na(mhs_l_post_7),  8 - mhs_l_post_7,  NA),
+         mhs_l_post_8  = ifelse(!is.na(mhs_l_post_8),  8 - mhs_l_post_8,  NA),
+         mhs_l_post_10 = ifelse(!is.na(mhs_l_post_10), 8 - mhs_l_post_10, NA),
+         mhs_l_post_11 = ifelse(!is.na(mhs_l_post_11), 8 - mhs_l_post_11, NA),
+         mhs_l_post_12 = ifelse(!is.na(mhs_l_post_12), 8 - mhs_l_post_12, NA),
+         iri_3         = ifelse(!is.na(iri_3),         6 - iri_3,         NA),
+         iri_4         = ifelse(!is.na(iri_4),         6 - iri_4,         NA),
+         iri_7         = ifelse(!is.na(iri_7),         6 - iri_7,         NA),
+         iri_12        = ifelse(!is.na(iri_12),        6 - iri_12,        NA),
+         iri_13        = ifelse(!is.na(iri_13),        6 - iri_13,        NA),
+         iri_14        = ifelse(!is.na(iri_14),        6 - iri_14,        NA),
+         iri_15        = ifelse(!is.na(iri_15),        6 - iri_15,        NA),
+         iri_18        = ifelse(!is.na(iri_18),        6 - iri_18,        NA),
+         iri_19        = ifelse(!is.na(iri_19),        6 - iri_19,        NA),
+         toe_1         = ifelse(!is.na(toe_1),         8 - toe_1,         NA),
+         toe_2         = ifelse(!is.na(toe_2),         8 - toe_2,         NA),
+         toe_3         = ifelse(!is.na(toe_3),         8 - toe_3,         NA),
+         sd_pre_1      = ifelse(!is.na(sd_pre_1),      8 - sd_pre_1,      NA),
+         sd_pre_2      = ifelse(!is.na(sd_pre_2),      8 - sd_pre_2,      NA),
+         sd_pre_3      = ifelse(!is.na(sd_pre_3),      8 - sd_pre_3,      NA),
+         sd_pre_4      = ifelse(!is.na(sd_pre_4),      8 - sd_pre_4,      NA),
+         sd_pre_5      = ifelse(!is.na(sd_pre_5),      8 - sd_pre_5,      NA),
+         sd_pre_6      = ifelse(!is.na(sd_pre_6),      8 - sd_pre_6,      NA),
+         sd_pre_8      = ifelse(!is.na(sd_pre_8),      8 - sd_pre_8,      NA),
+         sd_pre_9      = ifelse(!is.na(sd_pre_9),      8 - sd_pre_9,      NA),
+         sd_pre_13     = ifelse(!is.na(sd_pre_13),     8 - sd_pre_13,     NA),
+         sd_pre_14     = ifelse(!is.na(sd_pre_14),     8 - sd_pre_14,     NA),
+         sd_pre_15     = ifelse(!is.na(sd_pre_15),     8 - sd_pre_15,     NA),
+         sd_pre_16     = ifelse(!is.na(sd_pre_16),     8 - sd_pre_16,     NA)) %>%
+  # create condition variable based on the presence of certain variables
+  mutate(condition = case_when(!is.na(attentioncheck1_condition1) | !is.na(attentioncheck2_condition1) ~
+                                 "traditional__read",
+                               !is.na(attentioncheck1_condition2) | !is.na(attentioncheck2_condition2) ~
+                                 "traditional__read_plus_instruction_to_PT",
+                               !is.na(attentioncheck1_condition3) | 
+                                 !is.na(attentioncheck2_condition3) |
+                                 !is.na(attentioncheck3_condition3) ~ 
+                                 "traditional__read_plus_rewrite_from_1st_person",
+                               !is.na(attentioncheck1_condition4) | !is.na(attentioncheck2_condition4) ~ 
+                                 "modelled__read",
+                               !is.na(attentioncheck1_condition5) | !is.na(attentioncheck2_condition5) ~ 
+                                 "modelled__read_plus_instruction_to_PT",
+                               !is.na(attentioncheck1_condition6) | 
+                                 !is.na(attentioncheck2_condition6) |
+                                 !is.na(attentioncheck3_condition6) ~ 
+                                 "modelled__read_plus_rewrite_from_1st_person")) %>%
+  separate(condition, into = c("condition_type_of_pt", "condition_level"), sep = "__", remove = FALSE) %>%
+  # wrangle attention checks
+  mutate(attention_check_1 = case_when(!is.na(attentioncheck1_condition1) ~ attentioncheck1_condition1,
+                                       !is.na(attentioncheck1_condition2) ~ attentioncheck1_condition2,
+                                       !is.na(attentioncheck1_condition3) ~ attentioncheck1_condition3,
+                                       !is.na(attentioncheck1_condition4) ~ attentioncheck1_condition4,
+                                       !is.na(attentioncheck1_condition5) ~ attentioncheck1_condition5,
+                                       !is.na(attentioncheck1_condition6) ~ attentioncheck1_condition6),
+         attention_check_2 = case_when(!is.na(attentioncheck2_condition1) ~ attentioncheck2_condition1,
+                                       !is.na(attentioncheck2_condition2) ~ attentioncheck2_condition2,
+                                       !is.na(attentioncheck2_condition3) ~ attentioncheck2_condition3,
+                                       !is.na(attentioncheck2_condition4) ~ attentioncheck2_condition4,
+                                       !is.na(attentioncheck2_condition5) ~ attentioncheck2_condition5,
+                                       !is.na(attentioncheck2_condition6) ~ attentioncheck2_condition6),
+         attention_check_3 = case_when(!is.na(attentioncheck3_condition3) ~ attentioncheck3_condition3,
+                                       !is.na(attentioncheck3_condition6) ~ attentioncheck3_condition6),
+         attention_check_1_scored = ifelse(str_detect(tolower(attention_check_1), "richard"), "Correct", "TO BE MANUALLY SCORED"),
+         attention_check_2_scored = ifelse(str_detect(tolower(attention_check_2), "27"), "Correct", "TO BE MANUALLY SCORED")) %>%
+  # handle duplicates
+  # some participants participated twice. for such participants, take the participation that is (a) complete or (b) failing that more recent
+  # to do this, arrange by id, descending finished (so that "True" comes before "False"), and descending date
+  arrange(id, desc(finished), desc(ymd_hms(end_date))) %>%
+  # then for each id, retain only the first row
+  group_by(id) %>%
+  slice(1) %>%
+  ungroup() %>%
+  # retain only variables of interest
+  select(id,
+         duration_in_seconds_prepost = duration_in_seconds,
+         age,
+         gender, gender_text,
+         sexual_orientation, sexual_orientation_text,
+         ethnicity, ethnicity_text,
+         political_identity,
+         task_order,
+         condition,
+         condition_type_of_pt,
+         condition_level,
+         starts_with("attention_check_"),
+         starts_with("long_format_response_"),
+         starts_with("sd_"),
+         starts_with("mhs_"),
+         starts_with("mass_"),
+         starts_with("iri_"),
+         starts_with("toe_"),
+         agree_with_marriage_equality_prepost = agree_with_marriage_equality,
+         business_right_to_refuse_sexuality_prepost = business_right_to_refuse_sexuality,
+         willingness_to_sign_petition_prepost = willingness_to_sign_petition)
+
+data_item_level_prepost_b <- read_excel("raw/data_experiment_4_raw_prepost_b.xlsx") %>%
+  # automatically clean variable names
+  janitor::clean_names() %>%
+  # create task order variable
+  mutate(task_order = "MASS & SD form B first") %>%
+  # rename variables 
+  rename(id                         = q62,
+         age                        = q3,
+         gender                     = q4,
+         gender_text                = q4_3_text,
+         sexual_orientation         = q5,
+         sexual_orientation_text    = q5_5_text,
+         ethnicity                  = q6,
+         ethnicity_text             = q6_8_text,
+         political_identity         = q7,
+         attentioncheck1_condition1 = q42,
+         attentioncheck2_condition1 = q43,
+         attentioncheck1_condition2 = q44,
+         attentioncheck2_condition2 = q45,
+         attentioncheck1_condition3 = q25,
+         attentioncheck2_condition3 = q26,
+         attentioncheck1_condition4 = q47,
+         attentioncheck2_condition4 = q48,
+         attentioncheck1_condition5 = q49,
+         attentioncheck2_condition5 = q50,
+         attentioncheck1_condition6 = q51,
+         attentioncheck2_condition6 = q52,
+         attentioncheck3_condition3 = q27,
+         attentioncheck3_condition6 = q53,
+         # rename to extract the socially desirable responding questions
+         sd_post_1  = massa_1, # these differ between conditions
+         sd_post_2  = massa_3,
+         sd_post_3  = massa_4,
+         sd_post_4  = massa_6,
+         sd_post_5  = massa_7,
+         sd_post_6  = massa_8,
+         sd_post_7  = massa_9,
+         sd_post_8  = massa_11,
+         sd_post_9  = massa_12,
+         sd_post_10 = massa_13,
+         sd_post_11 = massa_15,
+         sd_post_12 = massa_18,
+         sd_post_13 = massa_20,
+         sd_post_14 = massa_21,
+         sd_post_15 = massa_22,
+         sd_post_16 = massa_24,
+         sd_pre_1   = massb_2, 
+         sd_pre_2   = massb_3,
+         sd_pre_3   = massb_6,
+         sd_pre_4   = massb_8,
+         sd_pre_5   = massb_9,
+         sd_pre_6   = massb_10,
+         sd_pre_7   = massb_13,
+         sd_pre_8   = massb_14,
+         sd_pre_9   = massb_16,
+         sd_pre_10  = massb_19,
+         sd_pre_11  = massb_20,
+         sd_pre_12  = massb_21,
+         sd_pre_13  = massb_22,
+         sd_pre_14  = massb_25,
+         sd_pre_15  = massb_26,
+         sd_pre_16  = massb_27,
+         
+         mass_pre_1 = massb_1,  # these differ between conditions
+         mass_pre_2 = massb_4,
+         mass_pre_3 = massb_5,
+         mass_pre_4 = massb_7,
+         mass_pre_5 = massb_11,
+         mass_pre_6 = massb_12,
+         mass_pre_7 = massb_15,
+         mass_pre_8 = massb_17,
+         mass_pre_9 = massb_18,
+         mass_pre_10 = massb_23,
+         mass_pre_11 = massb_24,
+         mass_pre_12 = massb_28,
+         mass_post_1 = massa_2,
+         mass_post_2 = massa_5,
+         mass_post_3 = massa_10,
+         mass_post_4 = massa_14,
+         mass_post_5 = massa_16,
+         mass_post_6 = massa_17,
+         mass_post_7 = massa_19,
+         mass_post_8 = massa_23,
+         mass_post_9 = massa_25,
+         mass_post_10 = massa_26,
+         mass_post_11 = massa_27,
+         mass_post_12 = massa_28,
+         
+         agree_with_marriage_equality = q56_1,
+         business_right_to_refuse_sexuality = q57_1,
+         willingness_to_sign_petition = q58,
+         
+         long_format_response_1  = q16, 
+         long_format_response_2  = q18, 
+         long_format_response_3  = q20, 
+         long_format_response_4  = q22, 
+         long_format_response_5  = q24, 
+         long_format_response_6  = q33, 
+         long_format_response_7  = q35, 
+         long_format_response_8  = q37, 
+         long_format_response_9  = q39, 
+         long_format_response_10 = q41) %>%
+  # if id variable is missing, use a dummy based on row number
+  mutate(id = ifelse(!is.na(id), id, paste("condition_b", row_number(), sep = "_"))) %>% # differs between conditions
+  # rename all variables that match a criterion
+  rename_with(~ str_replace(., "q16_",   "iri_"),        .cols = starts_with("q16_")) %>%
+  rename_with(~ str_replace(., "q17_",   "toe_"),        .cols = starts_with("q17_")) %>%
+  rename_with(~ str_replace(., "mhs_g_", "mhs_g_pre_"),  .cols = starts_with("mhs_g_")) %>%
+  rename_with(~ str_replace(., "mhs_l_", "mhs_l_pre_"),  .cols = starts_with("mhs_l_")) %>%
+  rename_with(~ str_replace(., "q54_",   "mhs_g_post_"), .cols = starts_with("q54_")) %>%
+  rename_with(~ str_replace(., "q55_",   "mhs_l_post_"), .cols = starts_with("q55_")) %>%
+  # recode categories to numerics
+  mutate(across(starts_with("iri_"),
+                ~ case_when(. == "A" ~ 1,
+                            . == "B" ~ 2, 
+                            . == "C" ~ 3,
+                            . == "D" ~ 4,
+                            . == "E" ~ 5)),
+         across(starts_with("mhs_") |
+                  contains("agree_with_marriage_equality") |
+                  contains("business_right_to_refuse_sexuality"),
+                ~ case_when(. == "Strongly agree" ~ 7,
+                            . == "Agree" ~ 6, 
+                            . == "Somewhat agree" ~ 5,
+                            . == "Neither agree nor disagree" ~ 4,
+                            . == "Somewhat disagree" ~ 3,
+                            . == "Disagree" ~ 2,
+                            . == "Somewhat disagree" ~ 1)),
+         across(starts_with("toe_"),
+                ~ as.numeric(.)),
+         across(starts_with("sd_"),
+                ~ as.numeric(.))) %>%
+  # reverse score items
+  mutate(mhs_g_pre_1   = ifelse(!is.na(mhs_g_pre_1),   8 - mhs_g_pre_1,   NA),
+         mhs_g_pre_2   = ifelse(!is.na(mhs_g_pre_2),   8 - mhs_g_pre_2,   NA),
+         mhs_g_pre_4   = ifelse(!is.na(mhs_g_pre_4),   8 - mhs_g_pre_4,   NA),
+         mhs_g_pre_5   = ifelse(!is.na(mhs_g_pre_5),   8 - mhs_g_pre_5,   NA),
+         mhs_g_pre_7   = ifelse(!is.na(mhs_g_pre_7),   8 - mhs_g_pre_7,   NA),
+         mhs_g_pre_8   = ifelse(!is.na(mhs_g_pre_8),   8 - mhs_g_pre_8,   NA),
+         mhs_g_pre_10  = ifelse(!is.na(mhs_g_pre_10),  8 - mhs_g_pre_10,  NA),
+         mhs_g_pre_11  = ifelse(!is.na(mhs_g_pre_11),  8 - mhs_g_pre_11,  NA),
+         mhs_g_pre_12  = ifelse(!is.na(mhs_g_pre_12),  8 - mhs_g_pre_12,  NA),
+         mhs_g_post_1  = ifelse(!is.na(mhs_g_post_1),  8 - mhs_g_post_1,  NA),
+         mhs_g_post_2  = ifelse(!is.na(mhs_g_post_2),  8 - mhs_g_post_2,  NA),
+         mhs_g_post_4  = ifelse(!is.na(mhs_g_post_4),  8 - mhs_g_post_4,  NA),
+         mhs_g_post_5  = ifelse(!is.na(mhs_g_post_5),  8 - mhs_g_post_5,  NA),
+         mhs_g_post_7  = ifelse(!is.na(mhs_g_post_7),  8 - mhs_g_post_7,  NA),
+         mhs_g_post_8  = ifelse(!is.na(mhs_g_post_8),  8 - mhs_g_post_8,  NA),
+         mhs_g_post_10 = ifelse(!is.na(mhs_g_post_10), 8 - mhs_g_post_10, NA),
+         mhs_g_post_11 = ifelse(!is.na(mhs_g_post_11), 8 - mhs_g_post_11, NA),
+         mhs_g_post_12 = ifelse(!is.na(mhs_g_post_12), 8 - mhs_g_post_12, NA),
+         mhs_l_pre_1   = ifelse(!is.na(mhs_l_pre_1),   8 - mhs_l_pre_1,   NA),
+         mhs_l_pre_2   = ifelse(!is.na(mhs_l_pre_2),   8 - mhs_l_pre_2,   NA),
+         mhs_l_pre_4   = ifelse(!is.na(mhs_l_pre_4),   8 - mhs_l_pre_4,   NA),
+         mhs_l_pre_5   = ifelse(!is.na(mhs_l_pre_5),   8 - mhs_l_pre_5,   NA),
+         mhs_l_pre_7   = ifelse(!is.na(mhs_l_pre_7),   8 - mhs_l_pre_7,   NA),
+         mhs_l_pre_8   = ifelse(!is.na(mhs_l_pre_8),   8 - mhs_l_pre_8,   NA),
+         mhs_l_pre_10  = ifelse(!is.na(mhs_l_pre_10),  8 - mhs_l_pre_10,  NA),
+         mhs_l_pre_11  = ifelse(!is.na(mhs_l_pre_11),  8 - mhs_l_pre_11,  NA),
+         mhs_l_pre_12  = ifelse(!is.na(mhs_l_pre_12),  8 - mhs_l_pre_12,  NA),
+         mhs_l_post_1  = ifelse(!is.na(mhs_l_post_1),  8 - mhs_l_post_1,  NA),
+         mhs_l_post_2  = ifelse(!is.na(mhs_l_post_2),  8 - mhs_l_post_2,  NA),
+         mhs_l_post_4  = ifelse(!is.na(mhs_l_post_4),  8 - mhs_l_post_4,  NA),
+         mhs_l_post_5  = ifelse(!is.na(mhs_l_post_5),  8 - mhs_l_post_5,  NA),
+         mhs_l_post_7  = ifelse(!is.na(mhs_l_post_7),  8 - mhs_l_post_7,  NA),
+         mhs_l_post_8  = ifelse(!is.na(mhs_l_post_8),  8 - mhs_l_post_8,  NA),
+         mhs_l_post_10 = ifelse(!is.na(mhs_l_post_10), 8 - mhs_l_post_10, NA),
+         mhs_l_post_11 = ifelse(!is.na(mhs_l_post_11), 8 - mhs_l_post_11, NA),
+         mhs_l_post_12 = ifelse(!is.na(mhs_l_post_12), 8 - mhs_l_post_12, NA),
+         iri_3         = ifelse(!is.na(iri_3),         6 - iri_3,         NA),
+         iri_4         = ifelse(!is.na(iri_4),         6 - iri_4,         NA),
+         iri_7         = ifelse(!is.na(iri_7),         6 - iri_7,         NA),
+         iri_12        = ifelse(!is.na(iri_12),        6 - iri_12,        NA),
+         iri_13        = ifelse(!is.na(iri_13),        6 - iri_13,        NA),
+         iri_14        = ifelse(!is.na(iri_14),        6 - iri_14,        NA),
+         iri_15        = ifelse(!is.na(iri_15),        6 - iri_15,        NA),
+         iri_18        = ifelse(!is.na(iri_18),        6 - iri_18,        NA),
+         iri_19        = ifelse(!is.na(iri_19),        6 - iri_19,        NA),
+         toe_1         = ifelse(!is.na(toe_1),         8 - toe_1,         NA),
+         toe_2         = ifelse(!is.na(toe_2),         8 - toe_2,         NA),
+         toe_3         = ifelse(!is.na(toe_3),         8 - toe_3,         NA),
+         sd_pre_3      = ifelse(!is.na(sd_pre_3),      8 - sd_pre_3,      NA),
+         sd_pre_5      = ifelse(!is.na(sd_pre_5),      8 - sd_pre_5,      NA),
+         sd_pre_7      = ifelse(!is.na(sd_pre_7),      8 - sd_pre_7,      NA),
+         sd_pre_8      = ifelse(!is.na(sd_pre_8),      8 - sd_pre_8,      NA),
+         sd_pre_9      = ifelse(!is.na(sd_pre_9),      8 - sd_pre_9,      NA),
+         sd_pre_10     = ifelse(!is.na(sd_pre_10),     8 - sd_pre_10,     NA),
+         sd_pre_11     = ifelse(!is.na(sd_pre_11),     8 - sd_pre_11,     NA),
+         sd_pre_12     = ifelse(!is.na(sd_pre_12),     8 - sd_pre_12,     NA),
+         sd_pre_13     = ifelse(!is.na(sd_pre_13),     8 - sd_pre_13,     NA),
+         sd_pre_14     = ifelse(!is.na(sd_pre_14),     8 - sd_pre_14,     NA),
+         sd_pre_16     = ifelse(!is.na(sd_pre_16),     8 - sd_pre_16,     NA)) %>%
+  # create condition variable based on the presence of certain variables
+  mutate(condition = case_when(!is.na(attentioncheck1_condition1) | !is.na(attentioncheck2_condition1) ~
+                                 "traditional__read",
+                               !is.na(attentioncheck1_condition2) | !is.na(attentioncheck2_condition2) ~
+                                 "traditional__read_plus_instruction_to_PT",
+                               !is.na(attentioncheck1_condition3) | 
+                                 !is.na(attentioncheck2_condition3) |
+                                 !is.na(attentioncheck3_condition3) ~ 
+                                 "traditional__read_plus_rewrite_from_1st_person",
+                               !is.na(attentioncheck1_condition4) | !is.na(attentioncheck2_condition4) ~ 
+                                 "modelled__read",
+                               !is.na(attentioncheck1_condition5) | !is.na(attentioncheck2_condition5) ~ 
+                                 "modelled__read_plus_instruction_to_PT",
+                               !is.na(attentioncheck1_condition6) | 
+                                 !is.na(attentioncheck2_condition6) |
+                                 !is.na(attentioncheck3_condition6) ~ 
+                                 "modelled__read_plus_rewrite_from_1st_person")) %>%
+  separate(condition, into = c("condition_type_of_pt", "condition_level"), sep = "__", remove = FALSE) %>%
+  # wrangle attention checks
+  mutate(attention_check_1 = case_when(!is.na(attentioncheck1_condition1) ~ attentioncheck1_condition1,
+                                       !is.na(attentioncheck1_condition2) ~ attentioncheck1_condition2,
+                                       !is.na(attentioncheck1_condition3) ~ attentioncheck1_condition3,
+                                       !is.na(attentioncheck1_condition4) ~ attentioncheck1_condition4,
+                                       !is.na(attentioncheck1_condition5) ~ attentioncheck1_condition5,
+                                       !is.na(attentioncheck1_condition6) ~ attentioncheck1_condition6),
+         attention_check_2 = case_when(!is.na(attentioncheck2_condition1) ~ attentioncheck2_condition1,
+                                       !is.na(attentioncheck2_condition2) ~ attentioncheck2_condition2,
+                                       !is.na(attentioncheck2_condition3) ~ attentioncheck2_condition3,
+                                       !is.na(attentioncheck2_condition4) ~ attentioncheck2_condition4,
+                                       !is.na(attentioncheck2_condition5) ~ attentioncheck2_condition5,
+                                       !is.na(attentioncheck2_condition6) ~ attentioncheck2_condition6),
+         attention_check_3 = case_when(!is.na(attentioncheck3_condition3) ~ attentioncheck3_condition3,
+                                       !is.na(attentioncheck3_condition6) ~ attentioncheck3_condition6),
+         attention_check_1_scored = ifelse(str_detect(tolower(attention_check_1), "richard"), "Correct", "TO BE MANUALLY SCORED"),
+         attention_check_2_scored = ifelse(str_detect(tolower(attention_check_2), "27"), "Correct", "TO BE MANUALLY SCORED")) %>%
+  # handle duplicates
+  # some participants participated twice. for such participants, take the participation that is (a) complete or (b) failing that more recent
+  # to do this, arrange by id, descending finished (so that "True" comes before "False"), and descending date
+  arrange(id, desc(finished), desc(ymd_hms(end_date))) %>%
+  # then for each id, retain only the first row
+  group_by(id) %>%
+  slice(1) %>%
+  ungroup() %>%
+  # retain only variables of interest
+  select(id,
+         duration_in_seconds_prepost = duration_in_seconds,
+         age,
+         gender, gender_text,
+         sexual_orientation, sexual_orientation_text,
+         ethnicity, ethnicity_text,
+         political_identity,
+         task_order,
+         condition,
+         condition_type_of_pt,
+         condition_level,
+         starts_with("attention_check_"),
+         starts_with("long_format_response_"),
+         starts_with("sd_"),
+         starts_with("mhs_"),
+         starts_with("mass_"),
+         starts_with("iri_"),
+         starts_with("toe_"),
+         agree_with_marriage_equality_prepost = agree_with_marriage_equality,
+         business_right_to_refuse_sexuality_prepost = business_right_to_refuse_sexuality,
+         willingness_to_sign_petition_prepost = willingness_to_sign_petition)
+
+# combine
+data_item_level_prepost <- 
+  bind_rows(data_item_level_prepost_a, data_item_level_prepost_b) %>%
+  # ensure responses are numeric
+  mutate(across(starts_with("sd_") |
+                  starts_with("mhs_") |
+                  starts_with("mass_") |
+                  starts_with("iri_") |
+                  starts_with("toe_"),
+                as.numeric)) %>%
+  # combine multiple choice and open ended responses
+  mutate(gender = ifelse(gender == "Or, if you prefer, type your answer", gender_text, gender),
+         sexual_orientation = ifelse(sexual_orientation == "Or, if you prefer, type your answer", sexual_orientation_text, sexual_orientation),
+         ethnicity = ifelse(ethnicity == "Or, if you prefer, type your answer", ethnicity_text, ethnicity)) %>%
+  select(-gender_text, -sexual_orientation_text, -ethnicity_text)
+
+# remove objects
+#rm(data_item_level_prepost_a, data_item_level_prepost_b)
+
+```
+
+## Followup
+
+```{r}
+
+data_item_level_followup <- read_excel("raw/data_experiment_4_raw_followup.xlsx") %>%
+  # automatically clean names
+  janitor::clean_names() %>%
+  # rename to extract the socially desirable responding questions
+  rename(id = q12,
+         sd_followup_1   = mass_2, # these differ between conditions
+         sd_followup_2   = mass_3,
+         sd_followup_3   = mass_6,
+         sd_followup_4   = mass_8,
+         sd_followup_5   = mass_9,
+         sd_followup_6   = mass_10,
+         sd_followup_7   = mass_13,
+         sd_followup_8   = mass_14,
+         sd_followup_9   = mass_16,
+         sd_followup_10  = mass_19,
+         sd_followup_11  = mass_20,
+         sd_followup_12  = mass_21,
+         sd_followup_13  = mass_22,
+         sd_followup_14  = mass_25,
+         sd_followup_15  = mass_26,
+         sd_followup_16  = mass_27,
+         
+         mass_followup_1   = mass_1, # these differ between conditions
+         mass_followup_2   = mass_4,
+         mass_followup_3   = mass_5,
+         mass_followup_4   = mass_7,
+         mass_followup_5   = mass_11,
+         mass_followup_6   = mass_12,
+         mass_followup_7   = mass_15,
+         mass_followup_8   = mass_17,
+         mass_followup_9   = mass_18,
+         mass_followup_10  = mass_23,
+         mass_followup_11  = mass_24,
+         mass_followup_12  = mass_28,
+         
+         agree_with_marriage_equality_followup = q11_1,
+         business_right_to_refuse_sexuality_followup = q13_1,
+         willingness_to_sign_petition_followup = q15) %>%
+  rename_with(~ str_replace(., "mhs_g_", "mhs_g_followup_"), .cols = starts_with("mhs_g_")) %>%
+  rename_with(~ str_replace(., "mhs_l_", "mhs_l_followup_"), .cols = starts_with("mhs_l_")) %>%
+  # recode categories to numerics
+  mutate(across(starts_with("mhs_") |
+                  contains("agree_with_marriage_equality") |
+                  contains("business_right_to_refuse_sexuality"),
+                ~ case_when(str_detect(., 'Strongly agree') ~ 7,	
+                            str_detect(., 'Agree') ~ 6,	
+                            str_detect(., 'Somewhat agree') ~ 5,	
+                            str_detect(., 'Neither agree nor disagree') ~ 4,	
+                            str_detect(., 'Somewhat disagree') ~ 3,	
+                            str_detect(., 'Disagree') ~ 2,	
+                            str_detect(., 'Strongly disagree') ~ 1))) %>%
+  # ensure responses are numeric
+  mutate(across(starts_with("sd_") |
+                  starts_with("mhs_") |
+                  starts_with("mass_"),
+                as.numeric)) %>%
+  # reverse score items
+  mutate(mhs_g_followup_1   = ifelse(!is.na(mhs_g_followup_1),   8 - mhs_g_followup_1,   NA),
+         mhs_g_followup_2   = ifelse(!is.na(mhs_g_followup_2),   8 - mhs_g_followup_2,   NA),
+         mhs_g_followup_4   = ifelse(!is.na(mhs_g_followup_4),   8 - mhs_g_followup_4,   NA),
+         mhs_g_followup_5   = ifelse(!is.na(mhs_g_followup_5),   8 - mhs_g_followup_5,   NA),
+         mhs_g_followup_7   = ifelse(!is.na(mhs_g_followup_7),   8 - mhs_g_followup_7,   NA),
+         mhs_g_followup_8   = ifelse(!is.na(mhs_g_followup_8),   8 - mhs_g_followup_8,   NA),
+         mhs_g_followup_10  = ifelse(!is.na(mhs_g_followup_10),  8 - mhs_g_followup_10,  NA),
+         mhs_g_followup_11  = ifelse(!is.na(mhs_g_followup_11),  8 - mhs_g_followup_11,  NA),
+         mhs_g_followup_12  = ifelse(!is.na(mhs_g_followup_12),  8 - mhs_g_followup_12,  NA),
+         
+         mhs_l_followup_1   = ifelse(!is.na(mhs_l_followup_1),   8 - mhs_l_followup_1,   NA),
+         mhs_l_followup_2   = ifelse(!is.na(mhs_l_followup_2),   8 - mhs_l_followup_2,   NA),
+         mhs_l_followup_4   = ifelse(!is.na(mhs_l_followup_4),   8 - mhs_l_followup_4,   NA),
+         mhs_l_followup_5   = ifelse(!is.na(mhs_l_followup_5),   8 - mhs_l_followup_5,   NA),
+         mhs_l_followup_7   = ifelse(!is.na(mhs_l_followup_7),   8 - mhs_l_followup_7,   NA),
+         mhs_l_followup_8   = ifelse(!is.na(mhs_l_followup_8),   8 - mhs_l_followup_8,   NA),
+         mhs_l_followup_10  = ifelse(!is.na(mhs_l_followup_10),  8 - mhs_l_followup_10,  NA),
+         mhs_l_followup_11  = ifelse(!is.na(mhs_l_followup_11),  8 - mhs_l_followup_11,  NA),
+         mhs_l_followup_12  = ifelse(!is.na(mhs_l_followup_12),  8 - mhs_l_followup_12,  NA)) %>%
+  # handle duplicates
+  # some participants participated twice. for such participants, take the participation that is (a) complete or (b) failing that more recent
+  # to do this, arrange by id, descending finished (so that "True" comes before "False"), and descending date
+  arrange(id, desc(finished), desc(ymd_hms(end_date))) %>%
+  # then for each id, retain only the first row
+  group_by(id) %>%
+  slice(1) %>%
+  ungroup() %>%
+  # retain only variables of interest
+  select(id,
+         duration_in_seconds_followup = duration_in_seconds,
+         starts_with("sd_"),
+         starts_with("mhs_"),
+         starts_with("mass_"),
+         agree_with_marriage_equality_followup,
+         business_right_to_refuse_sexuality_followup,
+         willingness_to_sign_petition_followup)
+
+```
+
+# Scale level data
+
+nb missingness exclusions are calculate from pre and post data only
+
+## Pre and post
+
+```{r}
+
+data_proportion_missing <- data_item_level_prepost %>%
+  # select only variables related to scales and items
+  select(id,
+         starts_with("sd_"),
+         starts_with("mhs_"),
+         starts_with("mass_"),
+         starts_with("iri_"),
+         starts_with("toe_")) %>%
+  # reshape data to longer format
+  pivot_longer(cols =
+                 starts_with("sd_") |
+                 starts_with("mhs_") |
+                 starts_with("mass_") |
+                 starts_with("iri_") |
+                 starts_with("toe_"),
+               names_to = "item",
+               values_to = "response") %>%
+  # recode responses as either present or missing
+  mutate(response = ifelse(is.na(response), 0, 1)) %>%
+  # calculate missingness for each id and define exclusion variable based on cutoff
+  group_by(id) %>%
+  summarize(proportion_missing = 1 - mean(response),
+            exclude_participant_based_on_missingness = ifelse(proportion_missing > .10, TRUE, FALSE),
+            .groups = "drop") 
+
+data_proportion_missing_by_scale_pre <- data_item_level_prepost %>%
+  # select only variables related to scales and items
+  select(id,
+         starts_with("mhs_g_pre"),
+         starts_with("mhs_l_pre"),
+         starts_with("mass_pre")) %>%
+  # reshape data to longer format
+  pivot_longer(cols =
+                 starts_with("mhs_") |
+                 starts_with("mass_"),
+               names_to = "item",
+               values_to = "response") %>%
+  mutate(scale = case_when(str_detect(item, "mass") ~ "mass",
+                           str_detect(item, "mhs_g") ~ "mhs_g",
+                           str_detect(item, "mhs_l") ~ "mhs_l")) %>%
+  # recode responses as either present or missing
+  mutate(response = ifelse(is.na(response), 0, 1)) %>%
+  # calculate missingness for each id and define exclusion variable based on cutoff
+  group_by(id, scale) %>%
+  summarize(proportion_missing = 1 - mean(response),
+            .groups = "drop") %>%
+  pivot_wider(names_from = scale,
+              values_from = proportion_missing,
+              names_prefix = "proportion_missing_pre_")
+
+data_scale_scores_prepost <- data_item_level_prepost %>%
+  # select only variables related to scales 
+  select(id, 
+         starts_with("sd_"),
+         starts_with("mhs_"),
+         starts_with("mass_"),
+         starts_with("iri_"),
+         starts_with("toe_")) %>%
+  # reshape to longer format
+  pivot_longer(cols = 
+                 starts_with("sd_") |
+                 starts_with("mhs_") |
+                 starts_with("mass_") |
+                 starts_with("iri_") |
+                 starts_with("toe_"),
+               names_to = "item",
+               values_to = "response") %>%
+  # create a scale variable by stripping out the item number
+  mutate(scale = str_remove_all(item, "[:digit:]"),
+         scale = str_sub(scale, end = -2),
+         scale = paste(scale, "sum_score", sep = "_")) %>%
+  # calculate a mean score for each id
+  group_by(id, scale) %>%
+  summarize(scale_mean = mean(response, na.rm = TRUE), .groups = "drop") %>%
+  # replace NaN with NA
+  mutate(scale_mean = ifelse(is.nan(scale_mean), NA, scale_mean)) %>%
+  # convert means to sum scores
+  mutate(scale_sum = case_when(str_detect(scale, "iri")  ~ scale_mean * 28,
+                               str_detect(scale, "mass") ~ scale_mean * 12,
+                               str_detect(scale, "mhs")  ~ scale_mean * 12,
+                               str_detect(scale, "sd")   ~ scale_mean * 16,
+                               str_detect(scale, "toe")  ~ scale_mean * 6)) %>%
+  select(-scale_mean) %>%
+  pivot_wider(names_from = "scale",
+              values_from = "scale_sum")
+
+```
+
+## Followup
+
+```{r}
+
+data_proportion_missing_by_scale_followup <- data_item_level_followup %>%
+  # select only variables related to scales and items
+  select(id,
+         starts_with("mhs_g_followup"),
+         starts_with("mhs_l_followup"),
+         starts_with("mass_followup")) %>%
+  # reshape data to longer format
+  pivot_longer(cols =
+                 starts_with("mhs_") |
+                 starts_with("mass_"),
+               names_to = "item",
+               values_to = "response") %>%
+  mutate(scale = case_when(str_detect(item, "mass") ~ "mass",
+                           str_detect(item, "mhs_g") ~ "mhs_g",
+                           str_detect(item, "mhs_l") ~ "mhs_l")) %>%
+  # recode responses as either present or missing
+  mutate(response = ifelse(is.na(response), 0, 1)) %>%
+  # calculate missingness for each id and define exclusion variable based on cutoff
+  group_by(id, scale) %>%
+  summarize(proportion_missing = 1 - mean(response),
+            .groups = "drop") %>%
+  pivot_wider(names_from = scale,
+              values_from = proportion_missing,
+              names_prefix = "proportion_missing_followup_")
+
+data_scale_scores_followup <- data_item_level_followup %>%
+  # select only variables related to scales 
+  select(id, 
+         starts_with("sd_"),
+         starts_with("mhs_"),
+         starts_with("mass_")) %>%
+  # reshape to longer format
+  pivot_longer(cols = 
+                 starts_with("sd_") |
+                 starts_with("mhs_") |
+                 starts_with("mass_"),
+               names_to = "item",
+               values_to = "response") %>%
+  # create a scale variable by stripping out the item number
+  mutate(scale = str_remove_all(item, "[:digit:]"),
+         scale = str_sub(scale, end = -2),
+         scale = paste(scale, "sum_score", sep = "_")) %>%
+  # calculate a mean score for each id
+  group_by(id, scale) %>%
+  summarize(scale_mean = mean(response, na.rm = TRUE), .groups = "drop") %>%
+  # replace NaN with NA
+  mutate(scale_mean = ifelse(is.nan(scale_mean), NA, scale_mean)) %>%
+  # convert means to sum scores
+  mutate(scale_sum = case_when(str_detect(scale, "mass") ~ scale_mean * 12,
+                               str_detect(scale, "mhs")  ~ scale_mean * 12,
+                               str_detect(scale, "sd")   ~ scale_mean * 16)) %>%
+  select(-scale_mean) %>%
+  pivot_wider(names_from = "scale",
+              values_from = "scale_sum")
+
+```
+
+# Combine
+
+```{r}
+
+data_processed_for_hand_scoring <- data_item_level_prepost %>%
+  full_join(data_proportion_missing,                   by = "id") %>%
+  full_join(data_proportion_missing_by_scale_pre,      by = "id") %>%
+  left_join(data_proportion_missing_by_scale_followup, by = "id") %>%  # left join so retain only ids present at baseline
+  left_join(data_item_level_followup,                  by = "id") %>%  # left join so retain only ids present at baseline
+  full_join(data_scale_scores_prepost,                 by = "id") %>%
+  left_join(data_scale_scores_followup,                by = "id") %>%  # left join so retain only ids present at baseline
+  # create difference scores
+  mutate(mass_diff_pre_post      = ifelse(!is.na(mass_post_sum_score) & !is.na(mass_pre_sum_score),
+                                          mass_post_sum_score - mass_pre_sum_score, NA),
+         mass_diff_pre_followup  = ifelse(!is.na(mass_followup_sum_score) & !is.na(mass_pre_sum_score),
+                                          mass_followup_sum_score - mass_pre_sum_score, NA),
+         mass_diff_post_followup  = ifelse(!is.na(mass_followup_sum_score) & !is.na(mass_post_sum_score),
+                                          mass_followup_sum_score - mass_post_sum_score, NA),
+         mhs_g_diff_pre_post     = ifelse(!is.na(mhs_g_post_sum_score) & !is.na(mhs_g_pre_sum_score),
+                                          mhs_g_post_sum_score - mhs_g_pre_sum_score, NA),
+         mhs_g_diff_pre_followup = ifelse(!is.na(mhs_g_followup_sum_score) & !is.na(mhs_g_pre_sum_score),
+                                          mhs_g_followup_sum_score - mhs_g_pre_sum_score, NA),
+         mhs_g_diff_post_followup = ifelse(!is.na(mhs_g_followup_sum_score) & !is.na(mhs_g_post_sum_score),
+                                          mhs_g_followup_sum_score - mhs_g_post_sum_score, NA),
+         mhs_l_diff_pre_post     = ifelse(!is.na(mhs_l_post_sum_score) & !is.na(mhs_l_pre_sum_score),
+                                          mhs_l_post_sum_score - mhs_l_pre_sum_score, NA),
+         mhs_l_diff_pre_followup = ifelse(!is.na(mhs_l_followup_sum_score) & !is.na(mhs_l_pre_sum_score),
+                                          mhs_l_followup_sum_score - mhs_l_pre_sum_score, NA),
+         mhs_l_diff_post_followup = ifelse(!is.na(mhs_l_followup_sum_score) & !is.na(mhs_l_post_sum_score),
+                                          mhs_l_followup_sum_score - mhs_l_post_sum_score, NA)) %>%
+  # define attrition variable
+  mutate(attrition_at_followup = ifelse(is.na(mass_followup_sum_score) &
+                                          is.na(mhs_g_followup_sum_score) &
+                                          is.na(mhs_l_followup_sum_score), TRUE, FALSE)) %>%
+  # select and reorder variables
+  select(id,
+         duration_in_seconds_prepost,
+         duration_in_seconds_followup,
+         # demographics
+         age,
+         gender, 
+         sexual_orientation, 
+         ethnicity,
+         political_identity,
+         # methods variables
+         task_order,
+         condition,
+         condition_type_of_pt,
+         condition_level,
+         proportion_missing,
+         proportion_missing_pre_mass,
+         proportion_missing_pre_mhs_g,
+         proportion_missing_pre_mhs_l,
+         proportion_missing_followup_mass,
+         proportion_missing_followup_mhs_g,
+         proportion_missing_followup_mhs_l,
+         exclude_participant_based_on_missingness,
+         attrition_at_followup,
+         starts_with("attention_check_"),
+         starts_with("long_format_response_"),
+         # scale level difference scores
+         mass_diff_pre_post,
+         mass_diff_pre_followup,
+         mass_diff_post_followup,
+         mhs_g_diff_pre_post,
+         mhs_g_diff_pre_followup,
+         mhs_g_diff_post_followup,
+         mhs_l_diff_pre_post,
+         mhs_l_diff_pre_followup,
+         mhs_l_diff_post_followup,
+         # scale level sum scores
+         ## covariates
+         iri_sum_score, 
+         toe_sum_score, 
+         sd_pre_sum_score,
+         ## others
+         sd_post_sum_score, 
+         sd_followup_sum_score, 
+         mass_pre_sum_score, 
+         mass_post_sum_score, 
+         mass_followup_sum_score, 
+         mhs_g_pre_sum_score, 
+         mhs_g_post_sum_score, 
+         mhs_g_followup_sum_score, 
+         mhs_l_pre_sum_score, 
+         mhs_l_post_sum_score, 
+         mhs_l_followup_sum_score,
+         # single items
+         agree_with_marriage_equality_prepost,
+         agree_with_marriage_equality_followup,
+         business_right_to_refuse_sexuality_prepost,
+         business_right_to_refuse_sexuality_followup,
+         willingness_to_sign_petition_prepost,
+         willingness_to_sign_petition_followup,
+         # item level 
+         starts_with("mhs_"),
+         starts_with("mass_"),
+         starts_with("sd_"),
+         starts_with("iri_"),
+         starts_with("toe_"))
+
+```
+
+# Write to disk
+
+```{r}
+
+data_processed_for_hand_scoring %>%
+  select(id, starts_with("attention_check_")) %>%
+  write_csv("processed/data_for_hand_scoring.csv")
+
+```
+
+# Integrate hand scoring
+
+Run script until here, then open and hand score the above csv file, then run from here to 
+
+```{r}
+
+data_attention_check_exclusions <- read_csv("processed/data_hand_scored.csv") %>%
+  select(id, 
+         attention_check_1_scored,
+         attention_check_2_scored,
+         attention_check_3_scored) %>%
+  mutate(exclude_participant_attention_checks = ifelse((attention_check_1_scored == "Correct" |
+                                                         attention_check_2_scored == "Correct" |
+                                                         (attention_check_3_scored == "Correct" |
+                                                            is.na(attention_check_3_scored))), FALSE, TRUE),
+         exclude_participant_attention_checks = ifelse(!is.na(exclude_participant_attention_checks), 
+                                                       exclude_participant_attention_checks,
+                                                       TRUE))
+
+data_processed <- data_processed_for_hand_scoring %>% 
+  select(-attention_check_1_scored,
+         -attention_check_2_scored) %>%
+  left_join(data_attention_check_exclusions, by = "id") %>%
+  # create global exclusion variable
+  mutate(exclude_participant_non_heterosexual = ifelse(sexual_orientation != "Heterosexual", TRUE, FALSE),
+         exclude = ifelse(exclude_participant_attention_checks == FALSE &
+                            exclude_participant_based_on_missingness == FALSE &
+                            exclude_participant_non_heterosexual == FALSE & 
+                            !is.na(condition), FALSE, TRUE)) %>%
+  # select and reorder variables
+  select(id,
+         duration_in_seconds_prepost,
+         duration_in_seconds_followup,
+         # demographics
+         age,
+         gender, 
+         sexual_orientation, 
+         ethnicity,
+         political_identity,
+         # methods variables
+         task_order,
+         condition,
+         condition_type_of_pt,
+         condition_level,
+         proportion_missing,
+         proportion_missing_pre_mass,
+         proportion_missing_pre_mhs_g,
+         proportion_missing_pre_mhs_l,
+         proportion_missing_followup_mass,
+         proportion_missing_followup_mhs_g,
+         proportion_missing_followup_mhs_l,
+         exclude_participant_based_on_missingness,
+         exclude_participant_attention_checks,
+         exclude_participant_non_heterosexual,
+         exclude,
+         attrition_at_followup,
+         # scale level difference scores
+         mass_diff_pre_post,
+         mass_diff_pre_followup,
+         mass_diff_post_followup,
+         mhs_g_diff_pre_post,
+         mhs_g_diff_pre_followup,
+         mhs_g_diff_post_followup,
+         mhs_l_diff_pre_post,
+         mhs_l_diff_pre_followup,
+         mhs_l_diff_post_followup,
+         # scale level sum scores
+         ## covariates
+         iri_sum_score, 
+         toe_sum_score, 
+         sd_pre_sum_score,
+         ## others
+         # sd_post_sum_score,     # item level reverse scoring not done above, sum score is meaningless
+         #sd_followup_sum_score,    # item level reverse scoring not done above, sum score is meaningless
+         mass_pre_sum_score, 
+         mass_post_sum_score, 
+         mass_followup_sum_score, 
+         mhs_g_pre_sum_score, 
+         mhs_g_post_sum_score, 
+         mhs_g_followup_sum_score, 
+         mhs_l_pre_sum_score, 
+         mhs_l_post_sum_score, 
+         mhs_l_followup_sum_score,
+         # single items
+         agree_with_marriage_equality_prepost,
+         agree_with_marriage_equality_followup,
+         business_right_to_refuse_sexuality_prepost,
+         business_right_to_refuse_sexuality_followup,
+         willingness_to_sign_petition_prepost,
+         willingness_to_sign_petition_followup,
+         # item level 
+         starts_with("mhs_"),
+         starts_with("mass_"),
+         starts_with("sd_"),
+         starts_with("iri_"),
+         starts_with("toe_"),
+         # attention checks
+         starts_with("attention_check_"),
+         starts_with("long_format_response_"))
+
+# write to disk
+write_csv(data_processed, "processed/data_processed.csv")
+
+```
+
+
+
+
+

@@ -1,0 +1,1312 @@
+---
+title: "Study 5"
+subtitle: "Analyses"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: hide
+    highlight: haddock
+    toc: yes
+    toc_float: yes
+---
+
+# Notes
+
+Both MHS and MASS have been scored for this study so that higher scores are desirable, i.e., represent lower homophobia. This is so that (a) there is a congruent interpretation of directionality in the analyses, and (b) so that positive Cohen's d scores in the meta analyses represent improvement, which is typical. 
+
+Error bars are 95% Confidence Intervals calculated as 1.96 +/- SE, where Standard Errors are calculated from the data directly (i.e., the empirical SEs by condition, not the model-implied SEs in the case of repeated-measures plots), where SE = SD/sqrt(N). Inferences are not made on the basis of these plots (e.g., based on the CIs) but on the basis of the ANOVAs and any required contrast tests (with familywise corrections). In addition to this, there are not models fitted to the raw data, only the between time-point difference scores. As such, there are no model-implied SEs to calculate CIs from. 
+
+```{r include=FALSE}
+
+knitr::opts_chunk$set(message = FALSE, 
+                      warning = FALSE)
+
+```
+
+# Dependencies 
+
+```{r}
+
+library(tidyverse)
+library(ez)
+library(schoRsch)
+library(knitr)
+library(kableExtra)
+library(psych)
+library(plotrix)
+
+# make directory
+dir.create("plots")
+
+# plotting function
+plot_descriptives <- function(data_raw, data_summary){
+  ggplot(data = data_summary) +
+    geom_point(data = data_raw, 
+               aes(x = timepoint, 
+                   y = score, 
+                   shape = condition,
+                   color = condition,
+                   group = condition),
+               position = position_jitterdodge(dodge.width = 0.3,
+                                               jitter.width = 0.1),
+               size = 1,
+               alpha = 0.35) +
+    geom_line(data = data_summary, 
+              aes(x = timepoint, 
+                  y = mean, 
+                  color = condition,
+                  group = condition),
+              position = position_dodge(width = 0.3)) +
+    geom_errorbar(data = data_summary, 
+                  aes(x = timepoint, 
+                      y = mean, 
+                      ymin = mean - se*1.96, 
+                      ymax = mean + se*1.96,
+                      color = condition,
+                      group = condition),
+                  width = 0.2,
+                  position = position_dodge(width = 0.3)) + 
+    geom_point(data = data_summary, 
+               aes(x = timepoint, 
+                   y = mean, 
+                   shape = condition,
+                   color = condition,
+                   group = condition),
+               position = position_dodge(width = 0.3), 
+               size = 2) +
+    theme_linedraw() + 
+    scale_color_viridis_d(begin = 0.3, end = 0.7, 
+                          name = "Level of participant burden",
+                          labels = c("No PT", "Traditional PT", "Modelled PT")) +
+    scale_shape_manual(name = "Level of participant burden",
+                       labels = c("No PT", "Traditional PT", "Modelled PT"),
+                       values = c(16, 15, 17)) +
+    xlab("Timepoint") 
+}
+
+
+plot_condition_main_effect <- function(data) {
+  ggplot(data,
+         aes(x = condition, 
+             y = mean)) +
+    geom_hline(yintercept = 0, linetype = "dashed") +
+    # geom_line(position = position_dodge(width = 0.3)) +
+    geom_errorbar(aes(ymin = mean - se*1.96, ymax = mean + se*1.96),
+                  width = 0.2) + 
+    geom_point(size = 2) +
+    theme_linedraw() + 
+    # theme_classic() + 
+    xlab("Intervention type")
+}
+
+```
+
+# Get data
+
+- NB MASS, MHS-G and MHS-L are all scored so that higher scores represent less homophobia, i.e., so that an increase in scores from pre to post/followup represents improvement.
+
+```{r}
+
+data_processed <- read_csv("../data/processed/data_processed.csv") 
+
+data_processed_after_exclusions <- data_processed %>%
+  filter(exclude == FALSE) %>%
+  mutate(id = as.factor(id),
+         condition = case_when(condition == "Video, watch" ~ "No PT",
+                               condition == "Video, traditional PT" ~ "Traditional PT",
+                               condition == "Video, modelled PT" ~ "Modelled PT"),
+         condition = fct_relevel(as.factor(condition), "No PT", "Traditional PT", "Modelled PT"),
+         attrition_at_followup = fct_relevel(as.factor(attrition_at_followup), "TRUE", "FALSE"))
+
+```
+
+# Sample
+
+## Sample sizes
+
+### Exclusions
+
+Greater than 10% missing data on the baseline MHS/MASS scales or failed attention checks
+
+```{r}
+
+data_processed %>%
+  count(exclude, missing = exclude_participant_based_on_missingness, 
+        attention = exclude_participant_attention_checks,
+        sexuality = exclude_participant_non_heterosexual)
+
+data_processed %>%
+  count(exclude) %>%
+  arrange(desc(n)) %>%
+  kable()  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+### Pre-post after exclusions
+
+```{r}
+
+data_processed_after_exclusions %>%
+  count() %>%
+  arrange() %>%
+  kable()  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+### Pre-followup after exclusions
+
+```{r}
+
+data_processed_after_exclusions %>%
+  filter(attrition_at_followup == FALSE) %>%
+  count() %>%
+  arrange() %>%
+  kable()  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+## Demographics
+
+After exclusions.
+
+Sexuality not reported as non-heterosexuality was an exclusion criterion.
+
+```{r}
+
+data_processed_after_exclusions %>%
+  summarize(mean_age = mean(age, na.rm = TRUE),
+            sd_age = sd(age, na.rm = TRUE)) %>%
+  mutate_if(is.numeric, round, digits = 2) %>%
+  kable()  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+data_processed_after_exclusions %>%
+  count(gender) %>%
+  kable()  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+data_processed_after_exclusions %>%
+  count(ethnicity) %>%
+  arrange(desc(n)) %>%
+  kable()  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+# Internal consistency
+
+## MASS
+
+### Version A
+
+```{r}
+
+results_alpha_mass_a <- data_processed_after_exclusions %>%
+  filter(task_order == "MASS & SD form A first") %>%
+  select(starts_with("mass_pre_"), -mass_pre_sum_score) %>%
+  alpha(., check.keys = FALSE)
+
+results_alpha_mass_a$total["raw_alpha"] %>%
+  mutate_all(round, digits = 2) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+### Version B
+
+```{r}
+
+results_alpha_mass_b <- data_processed_after_exclusions %>%
+  filter(task_order == "MASS & SD form B first") %>%
+  select(starts_with("mass_pre_"), -mass_pre_sum_score) %>%
+  alpha(., check.keys = FALSE)
+
+results_alpha_mass_b$total["raw_alpha"] %>%
+  mutate_all(round, digits = 2) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+## MHS-G
+
+```{r}
+
+results_alpha_mhs_g <- data_processed_after_exclusions %>%
+  select(mhs_g_pre_1,                    
+         mhs_g_pre_2,  
+         mhs_g_pre_3,                      
+         mhs_g_pre_4,  
+         mhs_g_pre_5,                      
+         mhs_g_pre_6,  
+         mhs_g_pre_7,                      
+         mhs_g_pre_8,  
+         mhs_g_pre_9,                      
+         mhs_g_pre_10,
+         mhs_g_pre_11,                     
+         mhs_g_pre_12) %>%
+  alpha(., check.keys = FALSE)
+
+results_alpha_mhs_g$total["raw_alpha"] %>%
+  mutate_all(round, digits = 2) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+## MHS-L
+
+```{r}
+
+results_alpha_mhs_l <- data_processed_after_exclusions %>%
+  select(mhs_l_pre_1,                    
+         mhs_l_pre_2,  
+         mhs_l_pre_3,                      
+         mhs_l_pre_4,  
+         mhs_l_pre_5,                      
+         mhs_l_pre_6,  
+         mhs_l_pre_7,                      
+         mhs_l_pre_8,  
+         mhs_l_pre_9,                      
+         mhs_l_pre_10,
+         mhs_l_pre_11,                     
+         mhs_l_pre_12) %>%
+  alpha(., check.keys = FALSE)
+
+results_alpha_mhs_l$total["raw_alpha"] %>%
+  mutate_all(round, digits = 2) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+## SD
+
+### Version A
+
+```{r}
+
+results_alpha_sd_a <- data_processed_after_exclusions %>%
+  filter(task_order == "MASS & SD form A first") %>%
+  select(starts_with("sd_pre_"), -sd_pre_sum_score) %>%
+  alpha(., check.keys = FALSE)
+
+results_alpha_sd_a$total["raw_alpha"] %>%
+  mutate_all(round, digits = 2) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+### Version B
+
+```{r}
+
+results_alpha_sd_b <- data_processed_after_exclusions %>%
+  filter(task_order == "MASS & SD form B first") %>%
+  select(starts_with("sd_pre_"), -sd_pre_sum_score) %>%
+  alpha(., check.keys = FALSE)
+
+results_alpha_sd_b$total["raw_alpha"] %>%
+  mutate_all(round, digits = 2) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+## TOE
+
+```{r}
+
+results_alpha_toe <- data_processed_after_exclusions %>%
+  select(starts_with("toe_"), -toe_sum_score) %>%
+  alpha(., check.keys = FALSE)
+
+results_alpha_toe$total["raw_alpha"] %>%
+  mutate_all(round, digits = 2) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+## IRI
+
+NB This throws a suggestion that some items be reverse scored. They have been double checked and are correct.
+
+```{r}
+
+results_alpha_iri <- data_processed_after_exclusions %>%
+  select(starts_with("iri_"), -iri_sum_score) %>%
+  alpha(., check.keys = FALSE)
+
+results_alpha_iri$total["raw_alpha"] %>%
+  mutate_all(round, digits = 2) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+
+# Descriptive plots
+
+## MASS
+
+```{r}
+
+data_temp_mass <- data_processed_after_exclusions %>% 
+  select(Pre = mass_pre_sum_score, 
+         Post = mass_post_sum_score, 
+         Followup = mass_followup_sum_score, 
+         condition) %>%
+  drop_na() %>%
+  pivot_longer(names_to = "timepoint",
+               values_to = "score",
+               cols = c("Pre", "Post", "Followup")) %>%
+  mutate(timepoint = fct_relevel(timepoint, "Pre", "Post", "Followup"))
+
+data_temp_summary_mass <- data_temp_mass %>%
+  group_by(condition, timepoint) %>%
+  summarize(mean = mean(score),
+            se = plotrix::std.error(score),
+            sd = sd(score))
+
+data_temp_summary_mass %>%
+  mutate_if(is.numeric, round, digits = 2) %>%
+  select(-se) %>%
+  rename(Condition = condition,
+         Timepoint = timepoint,
+         M = mean,
+         SD = sd) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+plot_descriptive_mass <- 
+  plot_descriptives(data_raw = data_temp_mass, data_summary = data_temp_summary_mass) +
+  ylab("MASS score")
+
+# print
+plot_descriptive_mass
+
+# save pdf
+ggsave(plot = plot_descriptive_mass,
+       device = "pdf",
+       filename = "plot_descriptive_mass.pdf",
+       path = "plots/",
+       units = "in",
+       width = 9,
+       height = 6)
+
+```
+
+## MHS-G
+
+```{r}
+
+data_temp_mhs_g <- data_processed_after_exclusions %>% 
+  select(Pre = mhs_g_pre_sum_score, 
+         Post = mhs_g_post_sum_score, 
+         Followup = mhs_g_followup_sum_score, 
+         condition) %>%
+  drop_na() %>%
+  pivot_longer(names_to = "timepoint",
+               values_to = "score",
+               cols = c("Pre", "Post", "Followup")) %>%
+  mutate(timepoint = fct_relevel(timepoint, "Pre", "Post", "Followup"))
+
+data_temp_summary_mhs_g <- data_temp_mhs_g %>%
+  group_by(condition, timepoint) %>%
+  summarize(mean = mean(score),
+            se = plotrix::std.error(score),
+            sd = sd(score))
+
+data_temp_summary_mhs_g %>%
+  mutate_if(is.numeric, round, digits = 2) %>%
+  select(-se) %>%
+  rename(Condition = condition,
+         Timepoint = timepoint,
+         M = mean,
+         SD = sd) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+plot_descriptive_mhs_g <- 
+  plot_descriptives(data_raw = data_temp_mhs_g, data_summary = data_temp_summary_mhs_g) +
+  ylab("MHS-G score")
+
+# print
+plot_descriptive_mhs_g
+
+# save pdf
+ggsave(plot = plot_descriptive_mhs_g,
+       device = "pdf",
+       filename = "plot_descriptive_mhs_g.pdf",
+       path = "plots/",
+       units = "in",
+       width = 9,
+       height = 6)
+
+```
+
+## MHS-L
+
+```{r}
+
+data_temp_mhs_l <- data_processed_after_exclusions %>% 
+  select(Pre = mhs_l_pre_sum_score, 
+         Post = mhs_l_post_sum_score, 
+         Followup = mhs_l_followup_sum_score, 
+         condition) %>%
+  drop_na() %>%
+  pivot_longer(names_to = "timepoint",
+               values_to = "score",
+               cols = c("Pre", "Post", "Followup")) %>%
+  mutate(timepoint = fct_relevel(timepoint, "Pre", "Post", "Followup"))
+
+data_temp_summary_mhs_l <- data_temp_mhs_l %>%
+  group_by(condition, timepoint) %>%
+  summarize(mean = mean(score),
+            se = plotrix::std.error(score),
+            sd = sd(score))
+
+data_temp_summary_mhs_l %>%
+  mutate_if(is.numeric, round, digits = 2) %>%
+  select(-se) %>%
+  rename(Condition = condition,
+         Timepoint = timepoint,
+         M = mean,
+         SD = sd) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+plot_descriptive_mhs_l <- 
+  plot_descriptives(data_raw = data_temp_mhs_l, data_summary = data_temp_summary_mhs_l) +
+  ylab("MHS-G score")
+
+# print
+plot_descriptive_mhs_l
+
+# save pdf
+ggsave(plot = plot_descriptive_mhs_l,
+       device = "pdf",
+       filename = "plot_descriptive_mhs_l.pdf",
+       path = "plots/",
+       units = "in",
+       width = 9,
+       height = 6)
+
+```
+
+# ANOVAs and plots
+
+- Error bars are 95% CIs.
+- Type III sum of squares
+
+## Pre-post 
+
+### MASS
+
+```{r}
+
+# fit anova
+fit_mass_post <- 
+  ezANOVA(data     = data_processed_after_exclusions,
+          dv       = mass_diff_pre_post,
+          between  = condition,
+          wid      = id,
+          type     = 3,
+          detailed = TRUE)
+
+# automatically format results
+anova_out(fit_mass_post, print = FALSE)$`--- FORMATTED RESULTS ------------------------------------` %>%
+  # print
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+# plot
+plot_prepost_mass <- data_processed_after_exclusions %>% 
+  select(mass_diff_pre_post, condition) %>%
+  drop_na() %>%
+  group_by(condition) %>%
+  summarize(mean = mean(mass_diff_pre_post),
+            se = plotrix::std.error(mass_diff_pre_post)) %>%
+  plot_condition_main_effect() +
+  ylab("Difference between\npre and post")
+
+# print 
+plot_prepost_mass
+
+# save pdf
+ggsave(plot = plot_prepost_mass,
+       device = "pdf",
+       filename = "plot_prepost_mass.pdf",
+       path = "plots/",
+       units = "in",
+       width = 6.5,
+       height = 4)
+
+```
+
+### MHS-G
+
+```{r}
+
+# fit anova
+fit_mhs_g_post <- 
+  ezANOVA(data     = data_processed_after_exclusions,
+          dv       = mhs_g_diff_pre_post,
+          between  = condition,
+          wid      = id,
+          type     = 3,
+          detailed = TRUE)
+
+# automatically format results
+anova_out(fit_mhs_g_post, print = FALSE)$`--- FORMATTED RESULTS ------------------------------------` %>%
+  # print
+  kable()  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+# plot
+plot_prepost_mhs_g <- data_processed_after_exclusions %>% 
+  select(mhs_g_diff_pre_post, condition) %>%
+  drop_na() %>%
+  group_by(condition) %>%
+  summarize(mean = mean(mhs_g_diff_pre_post),
+            se = plotrix::std.error(mhs_g_diff_pre_post)) %>%
+  plot_condition_main_effect() +
+  ylab("Difference between\npre and post")
+
+# print 
+plot_prepost_mhs_g
+
+# save pdf
+ggsave(plot = plot_prepost_mhs_g,
+       device = "pdf",
+       filename = "plot_prepost_mhs_g.pdf",
+       path = "plots/",
+       units = "in",
+       width = 6.5,
+       height = 4)
+
+```
+
+### MHS-L
+
+```{r}
+
+# fit anova
+fit_mhs_l_post <- 
+  ezANOVA(data     = data_processed_after_exclusions,
+          dv       = mhs_l_diff_pre_post,
+          between  = condition,
+          wid      = id,
+          type     = 3,
+          detailed = TRUE)
+
+# automatically format results
+anova_out(fit_mhs_l_post, print = FALSE)$`--- FORMATTED RESULTS ------------------------------------` %>%
+  # print
+  kable()  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+# plot
+plot_prepost_mhs_l <- data_processed_after_exclusions %>% 
+  select(mhs_l_diff_pre_post, condition) %>%
+  drop_na() %>%
+  group_by(condition) %>%
+  summarize(mean = mean(mhs_l_diff_pre_post),
+            se = plotrix::std.error(mhs_l_diff_pre_post)) %>%
+  plot_condition_main_effect() +
+  ylab("Difference between\npre and post")
+
+# print 
+plot_prepost_mhs_l
+
+# save pdf
+ggsave(plot = plot_prepost_mhs_l,
+       device = "pdf",
+       filename = "plot_prepost_mhs_l.pdf",
+       path = "plots/",
+       units = "in",
+       width = 6.5,
+       height = 4)
+
+```
+
+## Pre-followup
+
+### MASS
+
+```{r}
+
+# fit anova
+fit_mass_followup <- data_processed_after_exclusions %>%
+  select(id, mass_diff_pre_followup, condition) %>%
+  drop_na() %>%
+  ezANOVA(data     = .,
+          dv       = mass_diff_pre_followup,
+          between  = condition,
+          wid      = id,
+          type     = 3,
+          detailed = TRUE)
+
+# automatically format results
+anova_out(fit_mass_followup, print = FALSE)$`--- FORMATTED RESULTS ------------------------------------` %>%
+  # print
+  kable()  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+# plot
+plot_prefollowup_mass <- data_processed_after_exclusions %>% 
+  select(mass_diff_pre_followup, condition) %>%
+  drop_na() %>%
+  group_by(condition) %>%
+  summarize(mean = mean(mass_diff_pre_followup),
+            se = plotrix::std.error(mass_diff_pre_followup)) %>%
+  plot_condition_main_effect() +
+  ylab("Difference between\npre and followup")
+
+# print 
+plot_prefollowup_mass
+
+# save pdf
+ggsave(plot = plot_prefollowup_mass,
+       device = "pdf",
+       filename = "plot_prefollowup_mass.pdf",
+       path = "plots/",
+       units = "in",
+       width = 6.5,
+       height = 4)
+
+```
+
+### MHS-G
+
+```{r}
+
+# fit anova
+fit_mhs_g_followup <- data_processed_after_exclusions %>%
+  select(id, mhs_g_diff_pre_followup, condition) %>%
+  drop_na() %>%
+  ezANOVA(data     = .,
+          dv       = mhs_g_diff_pre_followup,
+          between  = condition,
+          wid      = id,
+          type     = 3,
+          detailed = TRUE)
+
+# automatically format results
+anova_out(fit_mhs_g_followup, print = FALSE)$`--- FORMATTED RESULTS ------------------------------------` %>%
+  # print
+  kable()  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+# plot
+plot_prefollowup_mhs_g <- data_processed_after_exclusions %>% 
+  select(mhs_g_diff_pre_followup, condition) %>%
+  drop_na() %>%
+  group_by(condition) %>%
+  summarize(mean = mean(mhs_g_diff_pre_followup),
+            se = plotrix::std.error(mhs_g_diff_pre_followup)) %>%
+  plot_condition_main_effect() +
+  ylab("Difference between\npre and followup")
+
+# print 
+plot_prefollowup_mhs_g
+
+# save pdf
+ggsave(plot = plot_prefollowup_mhs_g,
+       device = "pdf",
+       filename = "plot_prefollowup_mhs_g.pdf",
+       path = "plots/",
+       units = "in",
+       width = 6.5,
+       height = 4)
+
+```
+
+### MHS-L
+
+```{r}
+
+# fit anova
+fit_mhs_l_followup <- data_processed_after_exclusions %>%
+  select(id, mhs_l_diff_pre_followup, condition) %>%
+  drop_na() %>%
+  ezANOVA(data     = .,
+          dv       = mhs_l_diff_pre_followup,
+          between  = condition,
+          wid      = id,
+          type     = 3,
+          detailed = TRUE)
+
+# automatically format results
+anova_out(fit_mhs_l_followup, print = FALSE)$`--- FORMATTED RESULTS ------------------------------------` %>%
+  # print
+  kable()  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+# plot
+plot_prefollowup_mhs_l <- data_processed_after_exclusions %>% 
+  select(mhs_l_diff_pre_followup, condition) %>%
+  drop_na() %>%
+  group_by(condition) %>%
+  summarize(mean = mean(mhs_l_diff_pre_followup),
+            se = plotrix::std.error(mhs_l_diff_pre_followup)) %>%
+  plot_condition_main_effect() +
+  ylab("Difference between\npre and followup")
+
+# print 
+plot_prefollowup_mhs_l
+
+# save pdf
+ggsave(plot = plot_prefollowup_mhs_l,
+       device = "pdf",
+       filename = "plot_prefollowup_mhs_l.pdf",
+       path = "plots/",
+       units = "in",
+       width = 6.5,
+       height = 4)
+
+```
+
+## Post-followup
+
+### MASS
+
+```{r}
+
+# fit anova
+fit_mass_post_followup <- data_processed_after_exclusions %>%
+  select(id, mass_diff_post_followup, condition) %>%
+  drop_na() %>%
+  ezANOVA(data     = .,
+          dv       = mass_diff_post_followup,
+          between  = condition,
+          wid      = id,
+          type     = 3,
+          detailed = TRUE)
+
+# automatically format results
+anova_out(fit_mass_post_followup, print = FALSE)$`--- FORMATTED RESULTS ------------------------------------` %>%
+  # print
+  kable()  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+# plot
+plot_post_followup_mass <- data_processed_after_exclusions %>% 
+  select(mass_diff_post_followup, condition) %>%
+  drop_na() %>%
+  group_by(condition) %>%
+  summarize(mean = mean(mass_diff_post_followup),
+            se = plotrix::std.error(mass_diff_post_followup)) %>%
+  plot_condition_main_effect() +
+  ylab("Difference between\npost and followup")
+
+# print 
+plot_post_followup_mass
+
+# save pdf
+ggsave(plot = plot_post_followup_mass,
+       device = "pdf",
+       filename = "plot_post_followup_mass.pdf",
+       path = "plots/",
+       units = "in",
+       width = 6.5,
+       height = 4)
+
+```
+
+### MHS-G
+
+```{r}
+
+# fit anova
+fit_mhs_g_post_followup <- data_processed_after_exclusions %>%
+  select(id, mhs_g_diff_post_followup, condition) %>%
+  drop_na() %>%
+  ezANOVA(data     = .,
+          dv       = mhs_g_diff_post_followup,
+          between  = condition,
+          wid      = id,
+          type     = 3,
+          detailed = TRUE)
+
+# automatically format results
+anova_out(fit_mhs_g_post_followup, print = FALSE)$`--- FORMATTED RESULTS ------------------------------------` %>%
+  # print
+  kable()  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+# plot
+plot_post_followup_mhs_g <- data_processed_after_exclusions %>% 
+  select(mhs_g_diff_post_followup, condition) %>%
+  drop_na() %>%
+  group_by(condition) %>%
+  summarize(mean = mean(mhs_g_diff_post_followup),
+            se = plotrix::std.error(mhs_g_diff_post_followup)) %>%
+  plot_condition_main_effect() +
+  ylab("Difference between\npost and followup")
+
+# print 
+plot_post_followup_mhs_g
+
+# save pdf
+ggsave(plot = plot_post_followup_mhs_g,
+       device = "pdf",
+       filename = "plot_post_followup_mhs_g.pdf",
+       path = "plots/",
+       units = "in",
+       width = 6.5,
+       height = 4)
+
+```
+
+### MHS-L
+
+```{r}
+
+# fit anova
+fit_mhs_l_post_followup <- data_processed_after_exclusions %>%
+  select(id, mhs_l_diff_post_followup, condition) %>%
+  drop_na() %>%
+  ezANOVA(data     = .,
+          dv       = mhs_l_diff_post_followup,
+          between  = condition,
+          wid      = id,
+          type     = 3,
+          detailed = TRUE)
+
+# automatically format results
+anova_out(fit_mhs_l_post_followup, print = FALSE)$`--- FORMATTED RESULTS ------------------------------------` %>%
+  # print
+  kable()  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+# plot
+plot_post_followup_mhs_l <- data_processed_after_exclusions %>% 
+  select(mhs_l_diff_post_followup, condition) %>%
+  drop_na() %>%
+  group_by(condition) %>%
+  summarize(mean = mean(mhs_l_diff_post_followup),
+            se = plotrix::std.error(mhs_l_diff_post_followup)) %>%
+  plot_condition_main_effect() +
+  ylab("Difference between\npost and followup")
+
+# print 
+plot_post_followup_mhs_l
+
+# save pdf
+ggsave(plot = plot_post_followup_mhs_l,
+       device = "pdf",
+       filename = "plot_post_followup_mhs_l.pdf",
+       path = "plots/",
+       units = "in",
+       width = 6.5,
+       height = 4)
+
+```
+
+## Test assumptions
+
+### Normality
+
+Distribution plots
+
+```{r fig.height=8, fig.width=8}
+
+data_reshaped <- data_processed_after_exclusions %>%
+  select(condition, 
+         mass_diff_pre_post, 
+         mhs_g_diff_pre_post,
+         mhs_l_diff_pre_post,
+         mass_diff_pre_followup,
+         mhs_g_diff_pre_followup,
+         mhs_l_diff_pre_followup) %>%
+  gather(scale, score, c(-condition)) 
+
+ggplot(data_reshaped, aes(score)) +
+  geom_density(alpha = 0.3) +
+  facet_wrap(~ scale + condition, ncol = 3)
+
+```
+
+Q-Q plots
+
+```{r}
+
+library(ggpubr)
+p1 <- ggqqplot(data_processed_after_exclusions$mass_diff_pre_post[data_processed_after_exclusions$condition == "No PT"],
+               title = "MASS - No PT") 
+p2 <- ggqqplot(data_processed_after_exclusions$mhs_g_diff_pre_post[data_processed_after_exclusions$condition == "No PT"],
+               title = "MHS-G - No PT")
+p3 <- ggqqplot(data_processed_after_exclusions$mhs_l_diff_pre_post[data_processed_after_exclusions$condition == "No PT"],
+               title = "MHS-L - No PT")
+p4 <- ggqqplot(data_processed_after_exclusions$mass_diff_pre_followup[data_processed_after_exclusions$condition == "No PT"],
+               title = "MASS - No PT")
+p5 <- ggqqplot(data_processed_after_exclusions$mhs_g_diff_pre_followup[data_processed_after_exclusions$condition == "No PT"],
+               title = "MHS-G - No PT")
+p6 <- ggqqplot(data_processed_after_exclusions$mhs_l_diff_pre_followup[data_processed_after_exclusions$condition == "No PT"],
+               title = "MHS-L - No PT")
+
+p7 <- ggqqplot(data_processed_after_exclusions$mass_diff_pre_post[data_processed_after_exclusions$condition == "Traditional PT"],
+               title = "MASS - Traditional PT")
+p8 <- ggqqplot(data_processed_after_exclusions$mhs_g_diff_pre_post[data_processed_after_exclusions$condition == "Traditional PT"],
+               title = "MHS-G - Traditional PT")
+p9 <- ggqqplot(data_processed_after_exclusions$mhs_l_diff_pre_post[data_processed_after_exclusions$condition == "Traditional PT"],
+               title = "MHS-L - Traditional PT")
+p10 <- ggqqplot(data_processed_after_exclusions$mass_diff_pre_followup[data_processed_after_exclusions$condition == "Traditional PT"],
+               title = "MASS - Traditional PT")
+p11 <- ggqqplot(data_processed_after_exclusions$mhs_g_diff_pre_followup[data_processed_after_exclusions$condition == "Traditional PT"],
+               title = "MHS-G - Traditional PT")
+p12 <- ggqqplot(data_processed_after_exclusions$mhs_l_diff_pre_followup[data_processed_after_exclusions$condition == "Traditional PT"],
+               title = "MHS-L - Traditional PT")
+
+p13 <- ggqqplot(data_processed_after_exclusions$mass_diff_pre_post[data_processed_after_exclusions$condition == "Modelled PT"],
+               title = "MASS - Modelled PT")
+p14 <- ggqqplot(data_processed_after_exclusions$mhs_g_diff_pre_post[data_processed_after_exclusions$condition == "Modelled PT"],
+               title = "MHS-G - Modelled PT")
+p15 <- ggqqplot(data_processed_after_exclusions$mhs_l_diff_pre_post[data_processed_after_exclusions$condition == "Modelled PT"],
+               title = "MHS-L - Modelled PT")
+p16 <- ggqqplot(data_processed_after_exclusions$mass_diff_pre_followup[data_processed_after_exclusions$condition == "Modelled PT"],
+               title = "MASS - Modelled PT")
+p17 <- ggqqplot(data_processed_after_exclusions$mhs_g_diff_pre_followup[data_processed_after_exclusions$condition == "Modelled PT"],
+               title = "MHS-G - Modelled PT")
+p18 <- ggqqplot(data_processed_after_exclusions$mhs_l_diff_pre_followup[data_processed_after_exclusions$condition == "Modelled PT"],
+               title = "MHS-L - Modelled PT")
+
+library(patchwork)
+
+plot_QQ_prepost <- 
+  p1 + 
+  p7 + 
+  p13 + 
+  p3 + 
+  p9 + 
+  p15 +
+  p2 + 
+  p8 + 
+  p14 + 
+  plot_layout(ncol = 3) 
+
+plot_QQ_prefollowup <- 
+  p4 + 
+  p10 + 
+  p16 + 
+  p5 + 
+  p11 + 
+  p17 + 
+  p6 + 
+  p12 + 
+  p18 + 
+  plot_layout(ncol = 3) 
+
+plot_QQ_prepost
+plot_QQ_prefollowup
+
+ggsave(plot = plot_QQ_prepost,
+       device = "pdf",
+       filename = "plot_QQ_prepost.pdf",
+       path = "plots/",
+       units = "in",
+       width = 12,
+       height = 12)
+
+ggsave(plot = plot_QQ_prefollowup,
+       device = "pdf",
+       filename = "plot_QQ_prefollowup.pdf",
+       path = "plots/",
+       units = "in",
+       width = 12,
+       height = 12)
+
+```
+
+Shaprio-Wilks tests
+
+```{r}
+
+tidy_shaprio_wilks_test <- function(data) {
+  fit <- shapiro.test(data$score)
+  
+  results <- tibble(W = round(fit$statistic, 2),
+                    p = fit$p.value)
+  
+  return(results)
+}
+
+full_join(
+  data_reshaped %>%
+    group_by(scale, condition) %>%
+    do(tidy_shaprio_wilks_test(.)),
+  data_reshaped %>%
+    count(scale, condition),
+  by = c("scale", "condition")
+) %>%
+  mutate(p = round(p, 3)) %>%
+  select(scale, condition, n, W, p) %>%
+  kable()  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+### Homoscedasticity
+
+```{r}
+
+bind_rows(
+  fit_mass_post$`Levene's Test for Homogeneity of Variance` %>%
+    select(`F`, p),
+  fit_mhs_g_post$`Levene's Test for Homogeneity of Variance` %>%
+    select(`F`, p),
+  fit_mhs_l_post$`Levene's Test for Homogeneity of Variance` %>%
+    select(`F`, p),
+  fit_mass_followup$`Levene's Test for Homogeneity of Variance` %>%
+    select(`F`, p),
+  fit_mhs_g_followup$`Levene's Test for Homogeneity of Variance` %>%
+    select(`F`, p),
+  fit_mhs_l_followup$`Levene's Test for Homogeneity of Variance` %>%
+    select(`F`, p)
+) %>%
+  mutate(scale_and_timepoint = c("mass pre-post",
+                                 "mhs_g pre-post",
+                                 "mhs_l pre-post",
+                                 "mass pre-followup",
+                                 "mhs_g pre-followup",
+                                 "mhs_l pre-followup")) %>%
+  select(scale_and_timepoint, `F`, p) %>%
+  mutate_if(is.numeric, round, digits = 2) %>%
+  # print
+  kable()  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+## Non parametric tests
+
+### Pre-post 
+
+#### MASS
+
+```{r}
+
+kruskal.test(mass_diff_pre_post ~ condition, 
+             data = data_processed_after_exclusions)
+
+```
+
+#### MHS-G
+
+```{r}
+
+kruskal.test(mhs_g_diff_pre_post ~ condition, 
+             data = data_processed_after_exclusions)
+
+```
+
+#### MHS-L
+
+```{r}
+
+kruskal.test(mhs_l_diff_pre_post ~ condition, 
+             data = data_processed_after_exclusions)
+
+```
+
+### Pre-followup 
+
+#### MASS
+
+```{r}
+
+kruskal.test(mass_diff_pre_followup ~ condition, 
+             data = data_processed_after_exclusions)
+
+```
+
+#### MHS-G
+
+```{r}
+
+kruskal.test(mhs_g_diff_pre_followup ~ condition, 
+             data = data_processed_after_exclusions)
+
+```
+
+#### MHS-L
+
+```{r}
+
+kruskal.test(mhs_l_diff_pre_followup ~ condition, 
+             data = data_processed_after_exclusions)
+
+```
+
+
+
+# ANOVAs and Chi Square
+
+## Post 
+
+### Marriage Eq
+
+```{r}
+
+# fit anova
+fit_marriage_eq_prepost <- data_processed_after_exclusions %>%
+  select(id, agree_with_marriage_equality_prepost, condition) %>%
+  drop_na() %>%
+  ezANOVA(data     = .,
+          dv       = agree_with_marriage_equality_prepost,
+          between  = condition,
+          wid      = id,
+          type     = 3,
+          detailed = TRUE)
+
+# automatically format results
+anova_out(fit_marriage_eq_prepost, print = FALSE)$`--- FORMATTED RESULTS ------------------------------------` %>%
+  # print
+  kable()  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+### Refuse Service 
+
+```{r}
+
+# fit anova
+fit_refuse_service_prepost <- data_processed_after_exclusions %>%
+  select(id, business_right_to_refuse_sexuality_prepost, condition) %>%
+  drop_na() %>%
+  ezANOVA(data     = .,
+          dv       = business_right_to_refuse_sexuality_prepost,
+          between  = condition,
+          wid      = id,
+          type     = 3,
+          detailed = TRUE)
+
+# automatically format results
+anova_out(fit_refuse_service_prepost, print = FALSE)$`--- FORMATTED RESULTS ------------------------------------` %>%
+  # print
+  kable()  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+### Petition for Blood
+
+```{r}
+
+#Chi square condition
+chisq.test(data_processed_after_exclusions$willingness_to_sign_petition_prepost, data_processed_after_exclusions$condition, correct=FALSE)
+
+```
+
+## Follow-up
+
+### Marriage Eq
+
+```{r}
+
+# fit anova
+fit_marriage_eq_followup <- data_processed_after_exclusions %>%
+  select(id, agree_with_marriage_equality_followup, condition) %>%
+  drop_na() %>%
+  ezANOVA(data     = .,
+          dv       = agree_with_marriage_equality_followup,
+          between  = condition,
+          wid      = id,
+          type     = 3,
+          detailed = TRUE)
+
+# automatically format results
+anova_out(fit_marriage_eq_followup, print = FALSE)$`--- FORMATTED RESULTS ------------------------------------` %>%
+  # print
+  kable()  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+### Refuse Service 
+
+```{r}
+# fit anova
+fit_refuse_service_followup <- data_processed_after_exclusions %>%
+  select(id, business_right_to_refuse_sexuality_followup, condition) %>%
+  drop_na() %>%
+  ezANOVA(data     = .,
+          dv       = business_right_to_refuse_sexuality_followup,
+          between  = condition,
+          wid      = id,
+          type     = 3,
+          detailed = TRUE)
+
+# automatically format results
+anova_out(fit_refuse_service_followup, print = FALSE)$`--- FORMATTED RESULTS ------------------------------------` %>%
+  # print
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+### Petition for Blood
+
+```{r}
+
+#Chi square condition
+chisq.test(data_processed_after_exclusions$willingness_to_sign_petition_followup, data_processed_after_exclusions$condition, correct=FALSE)
+
+```
+
+# IRI ANOVA
+
+```{r}
+
+# fit anova
+fit_IRI <- data_processed_after_exclusions %>%
+  select(id, iri_sum_score, condition) %>%
+  drop_na() %>%
+  ezANOVA(data     = .,
+          dv       = iri_sum_score,
+          between  = condition,
+          wid      = id,
+          type     = 1,
+          detailed = TRUE)
+
+# automatically format results
+anova_out(fit_IRI, print = FALSE)$`--- FORMATTED RESULTS ------------------------------------` %>%
+  # print
+  kable()  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+# ToE ANOVA
+
+```{r}
+
+# fit anova
+fit_ToE <- data_processed_after_exclusions %>%
+  select(id, toe_sum_score, condition) %>%
+  drop_na() %>%
+  ezANOVA(data     = .,
+          dv       = toe_sum_score,
+          between  = condition,
+          wid      = id,
+          type     = 1,
+          detailed = TRUE)
+
+# automatically format results
+anova_out(fit_ToE, print = FALSE)$`--- FORMATTED RESULTS ------------------------------------` %>%
+  # print
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+
+

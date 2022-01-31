@@ -1,0 +1,382 @@
+---
+title: "Study 2"
+subtitle: "Assumptions tests"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: hide
+    highlight: haddock
+    toc: yes
+    toc_float: yes
+---
+
+```{r include=FALSE}
+
+knitr::opts_chunk$set(message = FALSE, 
+                      warning = FALSE)
+
+```
+
+# Dependencies 
+
+```{r}
+
+# dependencies
+library(tidyverse)
+library(strengejacke)  # library(devtools); install_github("strengejacke/strengejacke")
+library(knitr)
+library(kableExtra)
+library(psych)
+library(janitor)
+
+# make directory
+dir.create("plots")
+
+```
+
+# Get data
+
+```{r}
+
+data_processed <- read_csv("../data/processed/data_processed.csv") %>%
+  mutate(condition = fct_relevel(condition, "Negative", "Neutral", "Positive"))
+
+data_processed_after_exclusions <- data_processed %>%
+  filter(exclude == FALSE) %>%
+  mutate(id = as.factor(id))
+
+```
+
+# Sample
+
+## Sample sizes
+
+### Exclusions
+
+Greater than 10% missing data on the baseline MASS scales or failed attention checks
+
+```{r}
+
+data_processed %>%
+  count(exclude, missing = exclude_participant_based_on_missingness, 
+        sexuality = exclude_participant_non_heterosexual)
+
+data_processed %>%
+  count(exclude) %>%
+  arrange(desc(n)) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+### Pre-post after exclusions
+
+```{r}
+
+data_processed_after_exclusions %>%
+  count() %>%
+  arrange() %>%
+  kable()  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+## Demographics
+
+After exclusions.
+
+Sexuality not reported as non-heterosexuality was an exclusion criterion.
+
+```{r}
+
+data_processed_after_exclusions %>%
+  summarize(mean_age = mean(age, na.rm = TRUE),
+            sd_age = sd(age, na.rm = TRUE)) %>%
+  mutate_if(is.numeric, round, digits = 2) %>%
+  kable()  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+data_processed_after_exclusions %>%
+  count(gender) %>%
+  kable()  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+data_processed_after_exclusions %>%
+  count(ethnicity) %>%
+  arrange(desc(n)) %>%
+  kable()  %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+# Internal consistency
+
+of MASS
+
+## MASS
+
+### Version A
+
+```{r}
+
+results_alpha_mass_a <- data_processed_after_exclusions %>%
+  filter(task_order == "MASS & SD form A first") %>%
+  select(starts_with("mass_pre_"), -mass_pre_sum_score) %>%
+  alpha(., check.keys = FALSE)
+
+results_alpha_mass_a$total["raw_alpha"] %>%
+  mutate_all(round, digits = 2) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+### Version B
+
+```{r}
+
+results_alpha_mass_b <- data_processed_after_exclusions %>%
+  filter(task_order == "MASS & SD form B first") %>%
+  select(starts_with("mass_pre_"), -mass_pre_sum_score) %>%
+  alpha(., check.keys = FALSE)
+
+results_alpha_mass_b$total["raw_alpha"] %>%
+  mutate_all(round, digits = 2) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+## SD
+
+### Version A
+
+```{r}
+
+results_alpha_sd_a <- data_processed_after_exclusions %>%
+  filter(task_order == "MASS & SD form A first") %>%
+  select(starts_with("sd_pre_"), -sd_pre_sum_score) %>%
+  alpha(., check.keys = FALSE)
+
+results_alpha_sd_a$total["raw_alpha"] %>%
+  mutate_all(round, digits = 2) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+### Version B
+
+```{r}
+
+results_alpha_sd_b <- data_processed_after_exclusions %>%
+  filter(task_order == "MASS & SD form B first") %>%
+  select(starts_with("sd_pre_"), -sd_pre_sum_score) %>%
+  alpha(., check.keys = FALSE)
+
+results_alpha_sd_b$total["raw_alpha"] %>%
+  mutate_all(round, digits = 2) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+# Test moderation
+
+## All participants
+
+### Fit model
+
+```{r}
+
+fit_all <- lm(mass_post_sum_score ~ mass_pre_sum_score * condition,
+              data = data_processed)
+
+tab_model(fit_all, 
+          show.std = TRUE,
+          emph.p = FALSE,
+          col.order = c("est", "se", "ci", "std.est", "std.ci", "p"))
+
+plot_model(fit_all, type = "int")
+
+```
+
+### Assumption tests
+
+```{r}
+
+assumptions_plots_all <- plot_model(fit_all, type = "diag") 
+
+```
+
+#### Normality of residuals
+
+```{r}
+
+plot_QQ_all <- assumptions_plots_all[[2]] +
+  theme_classic() + 
+  labs(title = NULL,
+       subtitle = NULL) +
+  ylab("Sample") +
+  xlab("Theoretical")
+
+plot_QQ_all
+
+ggsave(plot     = plot_QQ_all,
+       device   = "pdf",
+       filename = "plot_QQ_all.pdf",
+       path     = "plots/",
+       units    = "in",
+       width    = 6,
+       height   = 6)
+
+```
+
+#### Homoscedasticity
+
+```{r}
+
+plot_homoscedasticity_all <- assumptions_plots_all[[4]] +
+  theme_classic() + 
+  labs(title = NULL,
+       subtitle = NULL)
+
+plot_homoscedasticity_all
+
+ggsave(plot     = plot_homoscedasticity_all,
+       device   = "pdf",
+       filename = "plot_homoscedasticity_all.pdf",
+       path     = "plots/",
+       units    = "in",
+       width    = 6,
+       height   = 6)
+
+```
+
+
+## After exclusions
+
+### Fit model
+
+```{r}
+
+fit_after_exclusions <- lm(mass_post_sum_score ~ mass_pre_sum_score * condition,
+              data = data_processed_after_exclusions)
+
+tab_model(fit_after_exclusions, 
+          show.std = TRUE,
+          emph.p = FALSE,
+          col.order = c("est", "se", "ci", "std.est", "std.ci", "p"))
+
+plot_model(fit_after_exclusions, type = "int")
+
+```
+
+### Assumption tests
+
+```{r}
+
+assumptions_plots_after_exclusions <- plot_model(fit_after_exclusions, type = "diag") 
+
+```
+
+#### Normality of residuals
+
+```{r}
+
+plot_QQ_after_exclusions <- assumptions_plots_after_exclusions[[2]] +
+  theme_classic() + 
+  labs(title = NULL,
+       subtitle = NULL) +
+  ylab("Sample") +
+  xlab("Theoretical")
+
+plot_QQ_after_exclusions
+
+# ggsave(plot     = plot_QQ_after_exclusions,
+#        device   = "pdf",
+#        filename = "plot_QQ_after_exclusions.pdf",
+#        path     = "plots/",
+#        units    = "in",
+#        width    = 6,
+#        height   = 6)
+
+```
+
+#### Homoscedasticity
+
+```{r}
+
+plot_homoscedasticity_after_exclusions <- assumptions_plots_after_exclusions[[4]] +
+  theme_classic() + 
+  labs(title = NULL,
+       subtitle = NULL)
+
+plot_homoscedasticity_after_exclusions
+
+# ggsave(plot     = plot_homoscedasticity_after_exclusions,
+#        device   = "pdf",
+#        filename = "plot_homoscedasticity_after_exclusions.pdf",
+#        path     = "plots/",
+#        units    = "in",
+#        width    = 6,
+#        height   = 6)
+
+```
+
+
+
+
+
+# Robustness test
+
+Moderation test on ranks
+
+## All participants
+
+```{r}
+
+data_subset_all <- data_processed %>%
+  #filter(condition %in% c("Positive", "Negative")) %>%
+  mutate(rank_mass_pre_sum_score = rank(mass_pre_sum_score),
+         rank_mass_post_sum_score = rank(mass_post_sum_score)) 
+
+fit_all <- 
+  lm(rank_mass_post_sum_score ~ rank_mass_pre_sum_score * condition,
+      data = data_subset_all)
+
+tab_model(fit_all,
+          emph.p = FALSE,
+          col.order = c("est", "se", "ci", "p"))
+
+summary(fit_all)
+
+plot_model(fit_all, type = "int")
+
+```
+
+## After exclusions
+
+```{r}
+
+data_subset_after_exclusions <- data_processed_after_exclusions %>%
+  #filter(condition %in% c("Positive", "Negative")) %>%
+  mutate(rank_mass_pre_sum_score = rank(mass_pre_sum_score),
+         rank_mass_post_sum_score = rank(mass_post_sum_score))
+
+assumptions_plots_after_exclusions <- 
+  lm(rank_mass_post_sum_score ~ rank_mass_pre_sum_score * condition,
+      data = data_subset_after_exclusions)
+
+tab_model(assumptions_plots_after_exclusions,
+          emph.p = FALSE,
+          col.order = c("est", "se", "ci", "p"))
+
+summary(assumptions_plots_after_exclusions)
+
+plot_model(assumptions_plots_after_exclusions, type = "int")
+
+```
+
+
+

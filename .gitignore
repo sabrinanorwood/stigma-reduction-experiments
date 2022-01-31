@@ -1,0 +1,17 @@
+
+*.DS_Store
+*.Rdata
+*.Rproj
+*.Rhistory
+
+study 2 (chapter 4 in thesis)/data/processed
+study 3 (chapter 3 in thesis)/data/processed
+study 4 (chapter 5 in thesis)/data/processed
+study 5 (chapter 6 in thesis)/data/processed
+
+study 2 (chapter 4 in thesis)/data/raw
+study 3 (chapter 3 in thesis)/data/raw
+study 4 (chapter 5 in thesis)/data/raw
+study 5 (chapter 6 in thesis)/data/raw
+
+study 2 (chapter 4 in thesis)/data/original manually processed

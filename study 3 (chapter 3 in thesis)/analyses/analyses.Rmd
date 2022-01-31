@@ -1,0 +1,142 @@
+---
+title: "Study 3"
+subtitle: "Assumptions tests"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: hide
+    highlight: haddock
+    toc: yes
+    toc_float: yes
+---
+
+```{r include=FALSE}
+
+knitr::opts_chunk$set(message = FALSE, 
+                      warning = FALSE)
+
+```
+
+# Dependencies 
+
+```{r}
+
+# dependencies
+library(tidyverse)
+library(strengejacke)  # library(devtools); install_github("strengejacke/strengejacke")
+library(knitr)
+library(kableExtra)
+
+# make directory
+dir.create("plots")
+
+```
+
+# Get data
+
+```{r}
+
+data_processed <- read_csv("../data/processed/data_processed.csv") %>%
+  rename(T1_Score = Pre_Total_MASS,
+         T2_Score = Post_Total_MASS) %>%
+  # convert valence conditions to factors
+  # // TODO needs checking
+  mutate(condition = as.factor(case_when(as.character(Valence) == "1" ~ "Positive",
+                                         as.character(Valence) == "2" ~ "Neutral",
+                                         as.character(Valence) == "3" ~ "Negative")),
+         condition = fct_relevel(condition, "Negative", "Neutral", "Positive"),
+         diff_pre_post = T2_Score - T1_Score,
+         id = as.factor(row_number())) %>%
+  select(id, condition, diff_pre_post, T1_Score, T2_Score) %>%
+  drop_na()
+
+```
+
+# Fit moderation model
+
+```{r}
+
+fit <- lm(T2_Score ~ T1_Score * condition,
+          data = data_processed)
+
+tab_model(fit, 
+          show.std = TRUE,
+          emph.p = FALSE,
+          col.order = c("est", "se", "ci", "std.est", "std.ci", "p"))
+
+plot_model(fit, type = "int")
+
+```
+
+## Assumption tests
+
+```{r}
+
+assumptions_plots <- plot_model(fit, type = "diag") 
+
+```
+
+### Normality of residuals
+
+```{r}
+
+plot_QQ <- assumptions_plots[[2]] +
+  theme_classic() + 
+  labs(title = NULL,
+       subtitle = NULL) +
+  ylab("Sample") +
+  xlab("Theoretical")
+
+plot_QQ
+
+ggsave(plot     = plot_QQ,
+       device   = "pdf",
+       filename = "plot_QQ.pdf",
+       path     = "plots/",
+       units    = "in",
+       width    = 6,
+       height   = 6)
+
+```
+
+### Homoscedasticity
+
+```{r}
+
+plot_homoscedasticity <- assumptions_plots[[4]] +
+  theme_classic() + 
+  labs(title = NULL,
+       subtitle = NULL)
+
+plot_homoscedasticity
+
+ggsave(plot     = plot_homoscedasticity,
+       device   = "pdf",
+       filename = "plot_homoscedasticity.pdf",
+       path     = "plots/",
+       units    = "in",
+       width    = 6,
+       height   = 6)
+
+```
+
+# Robustness tests
+
+run on ranks
+
+```{r}
+
+data_ranked <- data_processed %>%
+  mutate(rank_T1_Score = rank(T1_Score),
+         rank_T2_Score = rank(T2_Score)) 
+
+fit <- lm(rank_T2_Score ~ rank_T1_Score * condition,
+          data = data_ranked)
+
+tab_model(fit,
+          emph.p = FALSE,
+          col.order = c("est", "se", "ci", "p"))
+
+plot_model(fit, type = "int")
+
+```
