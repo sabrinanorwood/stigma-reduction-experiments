@@ -10,11 +10,9 @@ output:
     toc_float: yes
 ---
 
-# To do 
+# Notes
 
 SD items are only reverse scored for pre and post, not followup, so sum scores at that timepoints is meaningless. correct.
-
-# Notes
 
 Both MHS and MASS have been scored for this study so that higher scores are desirable, i.e., represent lower homophobia. This is so that (a) there is a congruent interpretation of citonality in the analyses, and (b) so that positive Cohen's d scores in the meta analyses represent improvement, which is typical. 
 
